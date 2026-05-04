@@ -7845,7 +7845,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
 
                     </AnimatePresence>
 
-                    <div className="flex items-center gap-1 sm:gap-2 pl-2 sm:pl-3 shrink-0 mb-1">
+                    <div className="flex items-center gap-1 sm:gap-2 pl-2 sm:pl-3 shrink-0">
                       <div className="relative">
                         <motion.button
                           type="button"
@@ -7856,7 +7856,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                             setIsAttachMenuOpen(!isAttachMenuOpen);
                             setIsToolsMenuOpen(false);
                           }}
-                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-slate-50 dark:bg-zinc-800 text-slate-500 hover:text-primary transition-all border border-slate-200/50 dark:border-zinc-700/50 shadow-sm"
+                          className="w-[30px] h-[30px] sm:w-[34px] sm:h-[34px] rounded-full flex items-center justify-center bg-slate-50 dark:bg-zinc-800 text-slate-500 hover:text-primary transition-all border border-slate-200/50 dark:border-zinc-700/50 shadow-sm"
                           title="Attachments"
                         >
                           <Plus className={`w-5 h-5 transition-transform duration-300 ${isAttachMenuOpen ? 'rotate-45' : ''}`} />
@@ -7873,7 +7873,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                             setIsToolsMenuOpen(!isToolsMenuOpen);
                             setIsAttachMenuOpen(false);
                           }}
-                          className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-50 dark:bg-zinc-800 text-slate-500 hover:text-primary transition-all border border-slate-200/50 dark:border-zinc-700/50 shadow-sm"
+                          className="w-[32px] h-[32px] rounded-full flex items-center justify-center bg-slate-50 dark:bg-zinc-800 text-slate-500 hover:text-primary transition-all border border-slate-200/50 dark:border-zinc-700/50 shadow-sm"
                           title="AISA ™ Magic Tools"
                         >
                           <Brain className="w-5 h-5" />
@@ -8249,10 +8249,10 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                             }
                           }
                         }}
-                        placeholder={isLimitReached ? t('limitReached') || "Chat limit reached. Sign in to continue." : (activeTool && TOOL_PLACEHOLDERS[activeTool]) ? TOOL_PLACEHOLDERS[activeTool] : (window.innerWidth < 768 ? "Write what’s on your mind…" : typedPlaceholder)}
+                        placeholder={isLimitReached ? t('limitReached') || "Chat limit reached. Sign in to continue." : (activeTool && TOOL_PLACEHOLDERS[activeTool]) ? TOOL_PLACEHOLDERS[activeTool] : (window.innerWidth < 768 ? "Ask anything..." : typedPlaceholder)}
                         rows={1}
-                        className={`w-full bg-transparent border-0 focus:ring-0 outline-none focus:outline-none px-2 py-2 sm:px-3 sm:py-2.5 text-slate-800 dark:text-zinc-100 text-left placeholder-slate-400 dark:placeholder-zinc-500 resize-none overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] font-normal leading-[1.6] text-[15px] sm:text-[16px] ${isLimitReached ? 'cursor-not-allowed opacity-50' : ''}`}
-                        style={{ minHeight: '40px', height: '40px', maxHeight: '140px' }}
+                        className={`w-full bg-transparent border-0 focus:ring-0 outline-none focus:outline-none px-2 py-1.5 sm:px-3 sm:py-2 text-slate-800 dark:text-zinc-100 text-left placeholder-slate-400 dark:placeholder-zinc-500 resize-none overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] font-normal leading-normal text-[15px] sm:text-[16px] ${isLimitReached ? 'cursor-not-allowed opacity-50' : ''}`}
+                        style={{ minHeight: '38px', height: '38px', maxHeight: '140px' }}
                       />
                     </div>
 
@@ -8312,7 +8312,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             title={t('send')}
-                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all shadow-lg relative overflow-visible z-20 text-white mb-0.5`}
+                            className={`w-[30px] h-[30px] sm:w-[34px] sm:h-[34px] rounded-full flex items-center justify-center transition-all shadow-lg relative overflow-visible z-20 text-white`}
                             style={{
                               background: `linear-gradient(135deg, var(--color-primary), var(--color-primary-dark))`,
                               boxShadow: isSendHovered ? `0 10px 20px -5px var(--color-primary-border)` : `none`
