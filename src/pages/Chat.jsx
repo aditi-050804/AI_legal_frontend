@@ -945,7 +945,9 @@ const Chat = () => {
     setIsCasePanelOpen,
     setActiveLegalToolkit,
     legalView,
-    setLegalView
+    setLegalView,
+    activeTool,
+    setActiveTool
   });
 
   // ─── Mobile Scroll Reset for Legal Views ──────────────────────────────────
@@ -3233,7 +3235,6 @@ const Chat = () => {
           setIsSessionLoading(false);
           return;
         }
-        setIsSessionLoading(false);
 
         console.log(`[DEBUG] Received history:`, sessionData);
 
@@ -3303,6 +3304,7 @@ const Chat = () => {
           console.log(`[DEBUG] First message role: ${processedHistory[0].role}, content preview: ${processedHistory[0].content?.substring(0, 20)}`);
         }
         setMessages(processedHistory);
+        setIsSessionLoading(false);
       } else {
         setMessages([]); // Clear messages immediately for fresh context
         setCurrentSessionId('new');
