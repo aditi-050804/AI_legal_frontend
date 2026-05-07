@@ -129,17 +129,22 @@ export const memoryData = atom({
 
 export const activeProjectIdData = atom({
   key: 'activeProjectIdData',
-  default: null
+  default: localStorage.getItem('aisa_active_project_id') || null
 })
 
 export const activeModeData = atom({
   key: 'activeModeData',
-  default: 'NORMAL_CHAT'
+  default: localStorage.getItem('aisa_active_mode') || 'NORMAL_CHAT'
 })
 
 export const activeLegalToolData = atom({
   key: 'activeLegalToolData',
-  default: null
+  default: (() => {
+    try {
+      const saved = localStorage.getItem('aisa_active_legal_tool_data');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) { return null; }
+  })()
 })
 
 export const activeProjectsData = atom({
