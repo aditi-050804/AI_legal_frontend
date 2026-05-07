@@ -1021,6 +1021,14 @@ const Chat = () => {
     }
   }, [activeTool]);
 
+  useEffect(() => {
+    if (currentProjectId && currentProjectId !== 'default') {
+      localStorage.setItem('aisa_active_project_id', currentProjectId);
+    } else {
+      localStorage.removeItem('aisa_active_project_id');
+    }
+  }, [currentProjectId]);
+
   const [deleteConfig, setDeleteConfig] = useState({
     isOpen: false,
     title: "Delete Message?",
@@ -1848,6 +1856,8 @@ const Chat = () => {
             role: 'user', // Ensure role user
             content: prompt, // Use content
             timestamp: new Date(),
+            mode: 'VOICE_ASSISTANT',
+            activeTool: 'legal_voice_reader',
             projectId: currentProjectId,
             attachments: filePreviews.map(fp => ({
               url: fp.url,
@@ -3234,14 +3244,33 @@ const Chat = () => {
           const historyMessages = Array.isArray(sessionData) ? sessionData : (sessionData.messages || []);
           const sessionMeta = Array.isArray(sessionData) ? {} : sessionData;
 
+          // 1. Restore Project Context
           if (sessionMeta.projectId && sessionMeta.projectId !== currentProjectId) {
+            console.log(`[Hydration] Restoring Project ID: ${sessionMeta.projectId}`);
             setCurrentProjectId(sessionMeta.projectId);
           }
 
-          if (sessionMeta.detectedMode === 'LEGAL_TOOLKIT' || (sessionMeta.projectId && currentCase?.isLegalCase)) {
-            if (currentMode !== 'LEGAL_TOOLKIT') {
-              setCurrentMode('LEGAL_TOOLKIT');
+          // 2. Restore Mode & Tool Context
+          if (sessionMeta.detectedMode) {
+            console.log(`[Hydration] Restoring Mode: ${sessionMeta.detectedMode}`);
+            setCurrentMode(sessionMeta.detectedMode);
+            
+            if (sessionMeta.detectedMode === 'LEGAL_TOOLKIT') {
+               setActiveLegalToolkit(true);
+               // If there's a specific tool saved, restore it
+               if (sessionMeta.activeTool) {
+                 const tool = PREMIUM_TOOLS.find(t => t.id === sessionMeta.activeTool);
+                 if (tool) {
+                   console.log(`[Hydration] Restoring Legal Tool: ${tool.name}`);
+                   setSelectedLegalTool(tool);
+                   setActiveTool(tool.name);
+                 }
+               }
             }
+          } else if (sessionMeta.projectId && currentCase?.isLegalCase) {
+             // Fallback for older sessions without detectedMode
+             setCurrentMode('LEGAL_TOOLKIT');
+             setActiveLegalToolkit(true);
           }
 
           const processedHistory = historyMessages.map(msg => {
@@ -3269,7 +3298,9 @@ const Chat = () => {
           const toolParam = params.get('tool');
           if (toolParam?.startsWith('legal_')) {
             const legalTool = PREMIUM_TOOLS.find(t => t.id === toolParam);
-            activateToolWithTypingEffect(toolParam, legalTool?.name, false); 
+            if (legalTool && selectedLegalTool?.id !== toolParam) {
+              activateToolWithTypingEffect(toolParam, legalTool?.name, false); 
+            }
           }
         } else {
           setCurrentSessionId('new');
@@ -3749,6 +3780,8 @@ const Chat = () => {
               ? 'Drafting Legal Notice for the case... 📄⚖️'
               : contentToSend,
             timestamp: new Date(),
+            mode: 'LEGAL_TOOLKIT',
+            activeTool: selectedLegalTool?.id,
             attachments: filePreviews.map(fp => ({
               url: fp.url,
               name: fp.name,
@@ -3941,7 +3974,9 @@ const Chat = () => {
                   p.type.includes('powerpoint') || p.type.includes('presentation') ? 'pptx' : 'file'
         })),
         agentName: activeAgent.agentName || activeAgent.name,
-        agentCategory: activeAgent.category
+        agentCategory: activeAgent.category,
+        mode: currentMode,
+        activeTool: selectedLegalTool?.id,
       };
 
       const updatedMessages = messages.filter(m => !m.isSystemLog).concat(userMsg);
@@ -4482,6 +4517,7 @@ ${documentConvertActive ? `### DOCUMENT CONVERSION MODE ENABLED (CRITICAL):
             if (aiResponseData.suggestions) finalModelMsg.suggestions = aiResponseData.suggestions;
             if (aiResponseData.snapshot) finalModelMsg.snapshot = aiResponseData.snapshot;
             finalModelMsg.detectedMode = detectedMode; // ✅ Ensure detectedMode persists to storage
+            finalModelMsg.activeTool = selectedLegalTool?.id;
           }
 
           // Set Smart Suggestions for the last response part
