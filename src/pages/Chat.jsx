@@ -504,53 +504,56 @@ const Chat = () => {
     if (!imageUrl) return;
     const t = toast.loading('Attempting to copy...');
 
-    // Use our backend proxy to bypass CORS
-    const proxiedUrl = `${apis.imageProxy}?url=${encodeURIComponent(imageUrl)}`;
-
     try {
-      const imagePromise = (async () => {
-        try {
-          // Use proxied URL for canvas method
-          return await new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-              try {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                canvas.toBlob((b) => b ? resolve(b) : reject(new Error('Canvas failed')), 'image/png');
-              } catch (e) { reject(e); }
-            };
-            img.onerror = () => reject(new Error('Load failed'));
-            img.src = proxiedUrl;
-          });
-        } catch (err) {
-          // Fallback to direct fetch via proxy
-          const response = await fetch(proxiedUrl);
-          const blob = await response.blob();
-          if (blob.type === 'image/png') return blob;
+      // 1. Fetch the image directly
+      let blob;
+      try {
+        const response = await fetch(imageUrl);
+        blob = await response.blob();
+      } catch (e) {
+        // Fallback to proxy if direct fetch fails (e.g. CORS)
+        const proxiedUrl = `${apis.imageProxy}?url=${encodeURIComponent(imageUrl)}`;
+        const response = await fetch(proxiedUrl);
+        blob = await response.blob();
+      }
 
-          // If fetched but not PNG, we must use canvas (redundant but safe)
-          throw new Error('Conversion required but proxy-canvas failed');
-        }
-      })();
+      // 2. Convert to PNG if it's not already
+      if (blob.type !== 'image/png') {
+        blob = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth;
+              canvas.height = img.naturalHeight;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              canvas.toBlob((b) => {
+                if (b) resolve(b);
+                else reject(new Error('Canvas toBlob failed'));
+              }, 'image/png');
+            } catch (err) {
+              reject(err);
+            }
+          };
+          img.onerror = () => reject(new Error('Image conversion failed'));
+          img.src = URL.createObjectURL(blob);
+        });
+      }
 
+      // 3. Write to clipboard
       await navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': imagePromise })
+        new ClipboardItem({ 'image/png': blob })
       ]);
 
       toast.dismiss(t);
       toast.success('Image copied! ✨');
     } catch (err) {
-      console.error('Copy failure (even with proxy):', err);
+      console.error('Copy failure:', err);
       toast.dismiss(t);
       toast.error(
         (t) => (
           <span className="flex flex-col gap-1">
-            <span className="font-bold text-xs">Copy failed (System)</span>
             <span className="text-[10px] opacity-80 leading-tight">Your browser security blocked the action even through the master proxy. Please **right-click** and **"Copy Image"** instead.</span>
           </span>
         ),
