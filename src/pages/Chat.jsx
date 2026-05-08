@@ -504,58 +504,68 @@ const Chat = () => {
     if (!imageUrl) return;
     const t = toast.loading('Attempting to copy...');
 
-    // Use our backend proxy to bypass CORS
-    const proxiedUrl = `${apis.imageProxy}?url=${encodeURIComponent(imageUrl)}`;
-
     try {
-      const imagePromise = (async () => {
+      const makeImagePromise = async () => {
+        let blob;
         try {
-          // Use proxied URL for canvas method
-          return await new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-              try {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                canvas.toBlob((b) => b ? resolve(b) : reject(new Error('Canvas failed')), 'image/png');
-              } catch (e) { reject(e); }
-            };
-            img.onerror = () => reject(new Error('Load failed'));
-            img.src = proxiedUrl;
-          });
-        } catch (err) {
-          // Fallback to direct fetch via proxy
+          const response = await fetch(imageUrl);
+          blob = await response.blob();
+        } catch (e) {
+          const proxiedUrl = `${apis.imageProxy}?url=${encodeURIComponent(imageUrl)}`;
           const response = await fetch(proxiedUrl);
-          const blob = await response.blob();
-          if (blob.type === 'image/png') return blob;
-
-          // If fetched but not PNG, we must use canvas (redundant but safe)
-          throw new Error('Conversion required but proxy-canvas failed');
+          blob = await response.blob();
         }
-      })();
 
-      await navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': imagePromise })
-      ]);
+        if (blob.type === 'image/png') return blob;
 
-      toast.dismiss(t);
-      toast.success('Image copied! ✨');
+        return await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth;
+              canvas.height = img.naturalHeight;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              canvas.toBlob((b) => {
+                if (b) resolve(b);
+                else reject(new Error('Canvas toBlob failed'));
+              }, 'image/png');
+            } catch (err) {
+              reject(err);
+            }
+          };
+          img.onerror = () => reject(new Error('Image conversion failed'));
+          img.src = URL.createObjectURL(blob);
+        });
+      };
+
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': makeImagePromise() })
+        ]);
+        toast.dismiss(t);
+        toast.success('Image copied! ✨');
+      } catch (err) {
+        if (err.name === 'TypeError') {
+          const blob = await makeImagePromise();
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          toast.dismiss(t);
+          toast.success('Image copied! ✨');
+        } else {
+          throw err;
+        }
+      }
     } catch (err) {
-      console.error('Copy failure (even with proxy):', err);
+      console.error('Copy failure:', err);
       toast.dismiss(t);
-      toast.error(
-        (t) => (
-          <span className="flex flex-col gap-1">
-            <span className="font-bold text-xs">Copy failed (System)</span>
-            <span className="text-[10px] opacity-80 leading-tight">Your browser security blocked the action even through the master proxy. Please **right-click** and **"Copy Image"** instead.</span>
-          </span>
-        ),
-        { duration: 4000 }
-      );
+      if (!window.isSecureContext) {
+        toast.error((t) => (<span className="flex flex-col gap-1"><span className="font-bold text-xs text-amber-500">Insecure Connection (HTTP)</span><span className="text-[10px] opacity-80 leading-tight">Browsers block image copying on HTTP sites. Use <b>HTTPS</b> or <b>Right-Click &gt; Copy Image</b>.</span></span>), { duration: 6000 });
+      } else {
+        toast.error((t) => (<span className="flex flex-col gap-1"><span className="font-bold text-xs">Copy failed</span><span className="text-[10px] opacity-80 leading-tight">Browser security blocked the action. Please <b>right-click</b> and <b>"Copy Image"</b> instead.</span></span>), { duration: 4000 });
+      }
     }
   };
   const { sessionId } = useParams();
@@ -6601,8 +6611,21 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                                                       </div>
                                                       <button
                                                         onClick={() => {
-                                                          navigator.clipboard.writeText(codeValue);
-                                                          toast.success("Code copied!");
+                                                          try {
+                                                            if (navigator.clipboard && window.isSecureContext) {
+                                                              navigator.clipboard.writeText(codeValue);
+                                                            } else {
+                                                              const textArea = document.createElement("textarea");
+                                                              textArea.value = codeValue;
+                                                              document.body.appendChild(textArea);
+                                                              textArea.select();
+                                                              document.execCommand('copy');
+                                                              document.body.removeChild(textArea);
+                                                            }
+                                                            toast.success("Code copied!");
+                                                          } catch (err) {
+                                                            toast.error("Failed to copy code");
+                                                          }
                                                         }}
                                                         className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 hover:text-white transition-all bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg border border-white/5 active:scale-95"
                                                       >
@@ -6624,6 +6647,8 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                                                         background: 'transparent',
                                                         borderRadius: 0,
                                                         border: 'none',
+                                                        overflowX: 'auto',
+                                                        overflowY: 'auto',
                                                         color: '#e5e7eb', // Ensure visibility for plain text
                                                         fontFamily: '"Fira Code", "JetBrains Mono", source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace'
                                                       }}
