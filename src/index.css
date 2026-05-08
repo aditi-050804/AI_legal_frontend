@@ -535,6 +535,25 @@ body,
   /* Chrome, Safari and Opera */
 }
 
+/* Chat Container - Ensures scrollability in all modes */
+.chatgpt-container {
+  -webkit-overflow-scrolling: touch; /* iOS momentum scroll */
+  overscroll-behavior: contain;      /* Prevent scroll chaining */
+  scroll-behavior: auto;             /* Instant scroll for programmatic jumps */
+}
+
+/* When a magic tool chip row is active, extra padding is applied via JS class.
+   This ensures the last message never hides behind the input bar. */
+.chatgpt-container.tool-active {
+  padding-bottom: 22rem !important;
+}
+
+@media (max-width: 768px) {
+  .chatgpt-container.tool-active {
+    padding-bottom: 20rem !important;
+  }
+}
+
 .admin-horizontal-scrollbar {
   overflow-x: auto;
   scrollbar-width: thin;

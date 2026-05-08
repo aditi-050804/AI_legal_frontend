@@ -542,7 +542,7 @@ const Chat = () => {
 
       try {
         await navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': makeImagePromise() })
+          new ClipboardItem({ 'image/png': await makeImagePromise() })
         ]);
         toast.dismiss(t);
         toast.success('Image copied! ✨');
@@ -555,17 +555,19 @@ const Chat = () => {
           toast.dismiss(t);
           toast.success('Image copied! ✨');
         } else {
-          throw err;
+          toast.dismiss(t);
+          toast.error(
+            <span>
+              <span className="font-bold block mb-1">Copy Failed</span>
+              <span className="text-[10px] opacity-80 leading-tight">Your browser security blocked the action even through the master proxy. Please **right-click** and **"Copy Image"** instead.</span>
+            </span>,
+            { duration: 4000 }
+          );
         }
       }
     } catch (err) {
-      console.error('Copy failure:', err);
       toast.dismiss(t);
-      if (!window.isSecureContext) {
-        toast.error((t) => (<span className="flex flex-col gap-1"><span className="font-bold text-xs text-amber-500">Insecure Connection (HTTP)</span><span className="text-[10px] opacity-80 leading-tight">Browsers block image copying on HTTP sites. Use <b>HTTPS</b> or <b>Right-Click &gt; Copy Image</b>.</span></span>), { duration: 6000 });
-      } else {
-        toast.error((t) => (<span className="flex flex-col gap-1"><span className="font-bold text-xs">Copy failed</span><span className="text-[10px] opacity-80 leading-tight">Browser security blocked the action. Please <b>right-click</b> and <b>"Copy Image"</b> instead.</span></span>), { duration: 4000 });
-      }
+      toast.error('Could not copy image');
     }
   };
   const { sessionId } = useParams();
@@ -3196,7 +3198,8 @@ const Chat = () => {
   };
 
 
-  useEffect(() => {    const loadSessions = async () => {
+  useEffect(() => {
+    const loadSessions = async () => {
       const data = await chatStorageService.getSessions(currentProjectId);
       setSessions(data);
 
@@ -6144,9 +6147,9 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
         <div
           ref={chatContainerRef}
           onScroll={handleScroll}
-          className={`relative flex-1 aisa-scalable-text chatgpt-container scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent ${((legalView === 'DASHBOARD' || legalView === 'PRECEDENTS') && currentMode === 'LEGAL_TOOLKIT')
+          className={`relative flex-1 aisa-scalable-text chatgpt-container scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent ${(isWebSearch || isDeepSearch || isImageGeneration || isVideoGeneration || isVoiceMode || isAudioConvertMode || isDocumentConvert || isCodeWriter || isMagicEditing || isFileAnalysis || isCashFlowMode || currentMode === 'LEGAL_TOOLKIT') ? 'tool-active' : ''} ${((legalView === 'DASHBOARD' || legalView === 'PRECEDENTS') && currentMode === 'LEGAL_TOOLKIT')
             ? 'z-20 h-full w-full overflow-hidden flex flex-col bg-slate-50 min-h-0'
-            : `overflow-y-auto ${((currentMode === 'LEGAL_TOOLKIT' && (selectedLegalTool?.id === 'legal_my_case' || selectedLegalTool?.id === 'legal_precedents')) || location.pathname === '/dashboard/cases') ? 'pt-4' : 'pt-[76px]'} lg:pt-6 pb-64 md:pb-72`
+            : `overflow-y-auto ${((currentMode === 'LEGAL_TOOLKIT' && (selectedLegalTool?.id === 'legal_my_case' || selectedLegalTool?.id === 'legal_precedents')) || location.pathname === '/dashboard/cases') ? 'pt-4' : 'pt-[76px]'} lg:pt-6 ${(isWebSearch || isDeepSearch || isImageGeneration || isVideoGeneration || isVoiceMode || isAudioConvertMode || isDocumentConvert || isCodeWriter || isMagicEditing || isFileAnalysis || isCashFlowMode || currentMode === 'LEGAL_TOOLKIT') ? 'pb-[20rem] md:pb-[22rem]' : 'pb-64 md:pb-72'}`
             }`}
           style={{
             overflowY: ((legalView === 'DASHBOARD' || legalView === 'PRECEDENTS') && currentMode === 'LEGAL_TOOLKIT') ? 'hidden' : 'auto',
@@ -6595,21 +6598,8 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                                                       </div>
                                                       <button
                                                         onClick={() => {
-                                                          try {
-                                                            if (navigator.clipboard && window.isSecureContext) {
-                                                              navigator.clipboard.writeText(codeValue);
-                                                            } else {
-                                                              const textArea = document.createElement("textarea");
-                                                              textArea.value = codeValue;
-                                                              document.body.appendChild(textArea);
-                                                              textArea.select();
-                                                              document.execCommand('copy');
-                                                              document.body.removeChild(textArea);
-                                                            }
-                                                            toast.success("Code copied!");
-                                                          } catch (err) {
-                                                            toast.error("Failed to copy code");
-                                                          }
+                                                          navigator.clipboard.writeText(codeValue);
+                                                          toast.success("Code copied!");
                                                         }}
                                                         className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 hover:text-white transition-all bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg border border-white/5 active:scale-95"
                                                       >
@@ -6631,8 +6621,6 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                                                         background: 'transparent',
                                                         borderRadius: 0,
                                                         border: 'none',
-                                                        overflowX: 'auto',
-                                                        overflowY: 'auto',
                                                         color: '#e5e7eb', // Ensure visibility for plain text
                                                         fontFamily: '"Fira Code", "JetBrains Mono", source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace'
                                                       }}

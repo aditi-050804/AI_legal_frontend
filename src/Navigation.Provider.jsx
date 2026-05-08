@@ -45,13 +45,20 @@ const AiBase = lazy(() => import('./Tools/AI_Base/AI_Base').catch(() => ({ defau
 const SecurityAndGuidelines = lazy(() => import('./landingpage/SecurityAndGuidelines'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 
+const isAuthenticated = () => {
+  const tokenStr = localStorage.getItem('token');
+  const userToken = getUserData()?.token;
+  return !!tokenStr && tokenStr !== 'undefined' && tokenStr !== 'null' && 
+         !!userToken && userToken !== 'undefined' && userToken !== 'null';
+};
+
 // ------------------------------
 // Home Redirect Component
 // ------------------------------
 // Redirects logged-in users to chat on direct access,
 // but allows them to view landing page when clicking logo from within app
 const HomeRedirect = () => {
-  const hasToken = !!localStorage.getItem('token');
+  const hasToken = isAuthenticated();
   const location = useLocation();
 
   // Check if user came from clicking the logo (internal navigation)
@@ -76,7 +83,7 @@ const HomeRedirect = () => {
 // ------------------------------
 // Protects login/signup pages - redirects authenticated users to chat
 const GuestRoute = ({ children }) => {
-  const hasToken = !!localStorage.getItem('token');
+  const hasToken = isAuthenticated();
 
   // If user is already logged in, redirect to chat
   if (hasToken) {
@@ -357,7 +364,10 @@ const SSOInterceptor = ({ children }) => {
       // Strip token from URL immediately to prevent re-triggering
       window.history.replaceState({}, '', location.pathname);
 
-      if (!localStorage.getItem('token')) {
+      const existingToken = localStorage.getItem('token');
+      const hasValidToken = !!existingToken && existingToken !== 'undefined' && existingToken !== 'null';
+
+      if (!hasValidToken) {
         setIsVerifying(true);
         axios.post(apis.ssoHandoff, { sso_token: ssoToken, from: fromApp })
           .then(res => {
