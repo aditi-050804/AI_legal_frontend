@@ -62,6 +62,8 @@ import ActionCard from '../Components/ActionCard';
 import { useAILegalCRM } from '../Tools/AI_Legal/hooks/useAILegalCRM';
 import LegalWorkspaceHeader from '../Tools/AI_Legal/components/LegalWorkspaceHeader';
 import LegalWorkspaceWelcome from '../Tools/AI_Legal/components/LegalWorkspaceWelcome';
+import ContextualLegalPanel from '../Tools/AI_Legal/components/ContextualLegalPanel';
+import useCaseWorkspaceStore from '../userStore/caseWorkspaceStore';
 
 const transformLegalActions = (content) => {
   if (!content) return "";
@@ -585,6 +587,8 @@ const Chat = () => {
   const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef(null);
   const [currentSessionId, setCurrentSessionId] = useState(sessionId || 'new');
+  const [isContextualPanelOpen, setIsContextualPanelOpen] = useState(false);
+  const { updateWorkspace, getWorkspace } = useCaseWorkspaceStore();
   const handleSendMessageRef = useRef(null);
   useEffect(() => {
     handleSendMessageRef.current = handleSendMessage;
@@ -747,6 +751,14 @@ const Chat = () => {
     }
   }, [legalView]);
 
+  useEffect(() => {
+    if (currentCase) {
+      localStorage.setItem('aisa_current_case', JSON.stringify(currentCase));
+    } else {
+      localStorage.removeItem('aisa_current_case');
+    }
+  }, [currentCase]);
+
   const [allProjects, setAllProjects] = useRecoilState(activeProjectsData);
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -874,45 +886,85 @@ const Chat = () => {
   const isDetectionPausedRef = useRef(false); // Pause detection after explicit dismissal
   const [currentProjectId, setCurrentProjectId] = useRecoilState(activeProjectIdData);
 
-  // ─── Deep Link Case Handling ───
+  // ─── Deep Link Case Handling (MASTER PERSISTENCE) ───
+  const lastHydratedRef = useRef(null);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const caseIdInUrl = params.get('caseId') || caseId;
 
-    if (caseIdInUrl) {
-      console.log(`[DeepLink] Case ID detected: ${caseIdInUrl}`);
-      // Validate format
-      if (/^[a-f\d]{24}$/i.test(caseIdInUrl)) {
+    if (caseIdInUrl && /^[a-f\d]{24}$/i.test(caseIdInUrl)) {
+      // 1. Sync Project ID
+      if (currentProjectId !== caseIdInUrl) {
+        console.log(`[DeepLink] Case ID detected: ${caseIdInUrl}`);
         setCurrentProjectId(caseIdInUrl);
-        
-        // Force workspace setup for legal cases
-        if (caseId || params.get('caseId')) {
-          setCurrentMode('LEGAL_TOOLKIT');
-          setSelectedLegalTool({ id: 'legal_my_case', name: 'My Case Assistant' });
-          setLegalView('CHAT');
-          setActiveTool('legal');
-          setActiveLegalToolkit(false);
-        }
+        localStorage.setItem('aisa_active_project_id', caseIdInUrl);
       }
+
+      // 2. Hydrate Workspace Metadata (Tools/Views)
+      if (currentMode !== 'LEGAL_TOOLKIT') setCurrentMode('LEGAL_TOOLKIT');
+      
+      const ws = getWorkspace(caseIdInUrl);
+      if (ws?.activeTool) {
+        if (selectedLegalTool?.id !== ws.activeTool.id) setSelectedLegalTool(ws.activeTool);
+        if (activeTool !== ws.activeTool.name) setActiveTool(ws.activeTool.name);
+      } else {
+        if (selectedLegalTool?.id !== 'legal_my_case') setSelectedLegalTool({ id: 'legal_my_case', name: 'My Case Assistant' });
+        if (activeTool !== 'legal') setActiveTool('legal');
+      }
+      
+      if (legalView !== 'CHAT') setLegalView('CHAT');
+      if (activeLegalToolkit) setActiveLegalToolkit(false);
+
+      // 3. Hydrate Messages & Session Recovery
+      if (lastHydratedRef.current !== caseIdInUrl) {
+        lastHydratedRef.current = caseIdInUrl;
+        
+        const restoreSession = async () => {
+          // Hydrate messages from store first (instant UI)
+          if (ws?.messages && ws.messages.length > 0 && messages.length === 0) {
+            console.log(`[Persistence] Restoring ${ws.messages.length} messages from workspace store.`);
+            setMessages(ws.messages);
+          }
+
+          // If no sessionId in URL, find the last one for this case
+          if (!sessionId) {
+            try {
+              const caseSessions = await chatStorageService.getSessions(caseIdInUrl);
+              if (Array.isArray(caseSessions) && caseSessions.length > 0) {
+                const lastSid = caseSessions[0].sessionId;
+                console.log(`[Persistence] Redirecting to last case session: ${lastSid}`);
+                navigate(`/dashboard/chat/${lastSid}?caseId=${caseIdInUrl}`, { replace: true });
+              }
+            } catch (err) {
+              console.error("[Persistence] Failed to fetch case sessions:", err);
+            }
+          }
+        };
+        restoreSession();
+      }
+    } else if (!caseIdInUrl) {
+      lastHydratedRef.current = null;
     }
-  }, [location.search, caseId, setCurrentProjectId, setCurrentMode, setSelectedLegalTool, setLegalView, setActiveTool, setActiveLegalToolkit]);
+  }, [location.search, caseId, sessionId, currentProjectId, setCurrentProjectId, setCurrentMode, setMessages, setLegalView, setActiveLegalToolkit]);
 
   // Listen for 'forceGlobal' navigation state to reset case context
   useEffect(() => {
     if (location.state?.forceGlobal) {
       console.log("[Navigation] Force Global Dashboard requested. Resetting context.");
       setCurrentProjectId('default');
+      localStorage.setItem('aisa_active_project_id', 'default');
       setCurrentCase(null);
       setCurrentMode('NORMAL_CHAT');
       setSelectedLegalTool(null);
       setActiveTool(null);
       setActiveLegalToolkit(false);
+      setIsContextualPanelOpen(false);
       setMessages([]);
       setLegalView('CHAT');
       // Clear the state so it doesn't re-fire on other renders
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state, location.pathname, navigate, setCurrentProjectId, setCurrentMode, setSelectedLegalTool, setMessages, setLegalView, setActiveTool, setActiveLegalToolkit]);
+  }, [location.state, location.pathname, navigate, setCurrentProjectId, setCurrentMode, setSelectedLegalTool, setMessages, setLegalView, setActiveTool, setActiveLegalToolkit, setCurrentCase, setIsContextualPanelOpen]);
 
 
   const [intentSuggestion, setIntentSuggestion] = useState(null);
@@ -999,10 +1051,11 @@ const Chat = () => {
   useEffect(() => {
     if (selectedLegalTool) {
       localStorage.setItem('aisa_active_legal_tool_data', JSON.stringify(selectedLegalTool));
+      if (currentProjectId) updateWorkspace(currentProjectId, { activeTool: selectedLegalTool });
     } else {
       localStorage.removeItem('aisa_active_legal_tool_data');
     }
-  }, [selectedLegalTool]);
+  }, [selectedLegalTool, currentProjectId]);
 
   useEffect(() => {
     localStorage.setItem('aisa_cashflow_mode', JSON.stringify(isCashFlowMode));
@@ -1016,6 +1069,7 @@ const Chat = () => {
   useEffect(() => {
     if (currentCase) {
       localStorage.setItem('aisa_current_case', JSON.stringify(currentCase));
+      if (currentCase._id) updateWorkspace(currentCase._id, { updatedAt: Date.now() });
     } else {
       localStorage.removeItem('aisa_current_case');
     }
@@ -1138,7 +1192,7 @@ const Chat = () => {
     return () => clearTimeout(debounceTimer);
   }, [inputValue, filePreviews.length]);
 
-  const handleAcceptSuggestion = (suggestion) => {
+  const handleAcceptSuggestion = (suggestion, forceOpenToolkit = true) => {
     const user = getUserData();
     if (!user?.token) {
       window.dispatchEvent(new CustomEvent('login_required', { detail: { toolName: suggestion.intent.replace('_', ' ') } }));
@@ -1170,7 +1224,7 @@ const Chat = () => {
     if (toolUpdates.activeCodeWriter) setIsCodeWriter(true);
 
     if (toolUpdates.activeLegalToolkit) {
-      setActiveLegalToolkit(true);
+      setActiveLegalToolkit(forceOpenToolkit);
       // Auto-select tool if intent matches a specific legal tool
       if (suggestion.intent && suggestion.intent.startsWith('legal_')) {
         const toolId = suggestion.intent;
@@ -3267,6 +3321,11 @@ const Chat = () => {
           const historyMessages = Array.isArray(sessionData) ? sessionData : (sessionData.messages || []);
           const sessionMeta = Array.isArray(sessionData) ? {} : sessionData;
 
+          // If this session belongs to a case, sync with workspace store
+          if (sessionMeta.projectId && /^[a-f\d]{24}$/i.test(sessionMeta.projectId)) {
+             updateWorkspace(sessionMeta.projectId, { messages: historyMessages });
+          }
+
           // 1. Restore Project Context
           if (sessionMeta.projectId && sessionMeta.projectId !== currentProjectId) {
             console.log(`[Hydration] Restoring Project ID: ${sessionMeta.projectId}`);
@@ -3279,7 +3338,7 @@ const Chat = () => {
             setCurrentMode(sessionMeta.detectedMode);
             
             if (sessionMeta.detectedMode === 'LEGAL_TOOLKIT') {
-               setActiveLegalToolkit(true);
+               setActiveLegalToolkit(false); // DO NOT auto-open on hydration
                // If there's a specific tool saved, restore it
                if (sessionMeta.activeTool) {
                  const tool = PREMIUM_TOOLS.find(t => t.id === sessionMeta.activeTool);
@@ -3291,9 +3350,9 @@ const Chat = () => {
                }
             }
           } else if (sessionMeta.projectId && currentCase?.isLegalCase) {
-             // Fallback for older sessions without detectedMode
-             setCurrentMode('LEGAL_TOOLKIT');
-             setActiveLegalToolkit(true);
+            // Fallback for older sessions without detectedMode
+            setCurrentMode('LEGAL_TOOLKIT');
+            setActiveLegalToolkit(false); // DO NOT auto-open on hydration fallback
           }
 
           const processedHistory = historyMessages.map(msg => {
@@ -3384,6 +3443,15 @@ const Chat = () => {
             } catch (e) { console.warn("Memory load failed", e); }
           }
         }
+
+        // Final sync for case workspace if applicable
+        if (caseId) {
+          const ws = getWorkspace(caseId);
+          if (ws?.activeTool && selectedLegalTool?.id !== ws.activeTool.id) {
+            setSelectedLegalTool(ws.activeTool);
+            setActiveTool(ws.activeTool.name);
+          }
+        }
       } catch (err) {
         console.error("Chat initialization failed:", err);
       } finally {
@@ -3416,6 +3484,12 @@ const Chat = () => {
       }
       lastScrollTopRef.current = scrollTop <= 0 ? 0 : scrollTop;
 
+      // Update workspace scroll position for persistence
+      if (caseId || currentProjectId) {
+         const id = caseId || currentProjectId;
+         updateWorkspace(id, { uiState: { scrollPosition: scrollTop } });
+      }
+
       // Increased threshold (250px) to be less sensitive to minor scroll movements or large images
       const isNearBottom = scrollHeight - scrollTop - clientHeight < 350;
       shouldAutoScrollRef.current = isNearBottom;
@@ -3443,8 +3517,18 @@ const Chat = () => {
   useEffect(() => {
     // Do NOT auto-scroll while AI is streaming text word-by-word
     if (isStreamingRef.current) return;
+    
+    // If we just loaded a case workspace, restore its scroll position
+    if (caseId && chatContainerRef.current) {
+      const ws = getWorkspace(caseId);
+      if (ws?.uiState?.scrollPosition) {
+        chatContainerRef.current.scrollTop = ws.uiState.scrollPosition;
+        return;
+      }
+    }
+    
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, isLoading, caseId]);
   
   const handleNewChat = async () => {
     const token = getUserData()?.token;
@@ -3532,30 +3616,25 @@ const Chat = () => {
     // 5. Professional Activation Feedback (Toast)
     if (shouldToast) {
       toast.dismiss(); // Clear any previous tool activation toasts
-      const feedbackMsg = toolKey === 'legal_precedents' || toolKey === 'legal_case_law_research'
-        ? "Fetching relevant case laws..."
-        : "Initializing legal workflow...";
-
+      
       toast.success(
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <Scale size={14} className="text-indigo-600" />
-          <span className="font-black text-[13px] text-slate-900">⚖️ {finalToolName} Activated</span>
-        </div>
-        <p className="text-[11px] text-slate-500 font-medium ml-6">{feedbackMsg}</p>
-      </div>,
-      {
-        duration: 2000,
-        style: {
-          background: '#FFFFFF',
-          color: '#1E293B',
-          borderRadius: '20px',
-          padding: '12px 20px',
-          border: '1px solid rgba(79, 70, 229, 0.1)',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        <div className="flex items-center gap-2.5">
+          <Zap size={14} className="text-indigo-600 animate-pulse" fill="currentColor" />
+          <span className="font-black text-[12px] uppercase tracking-wide">{finalToolName} Activated</span>
+        </div>,
+        {
+          duration: 1500, // Compact 1.5s duration
+          style: {
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)',
+            color: '#1E293B',
+            borderRadius: '16px',
+            padding: '10px 16px',
+            border: '1px solid rgba(79, 70, 229, 0.2)',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+          }
         }
-      }
-    );
+      );
     }
   };
 
@@ -3671,7 +3750,7 @@ const Chat = () => {
         const activeSuggestion = intentSuggestion;
         setIntentSuggestion(null); // Clear state immediately
 
-        handleAcceptSuggestion(activeSuggestion);
+        handleAcceptSuggestion(activeSuggestion, false);
         // After switching mode, we recursively call handleSendMessage with the tool override
         setTimeout(() => {
           isSendingRef.current = false;
@@ -3830,7 +3909,13 @@ const Chat = () => {
                   fp.type.includes('word') || fp.type.includes('document') ? 'docx' : 'file'
             }))
           };
-          setMessages(prev => prev.filter(m => !m.isSystemLog).concat(newUserMsg));
+          
+          setMessages(prev => {
+            const next = prev.filter(m => !m.isSystemLog).concat(newUserMsg);
+            if (currentProjectId) updateWorkspace(currentProjectId, { messages: next });
+            return next;
+          });
+
           setTimeout(() => scrollToBottom(true, 'smooth'), 50);
           setInputValue('');
           handleRemoveFile();
@@ -3892,7 +3977,11 @@ const Chat = () => {
             }
 
             const finalAiMsg = { ...aiMsg, content: fullReply };
-            setMessages(prev => prev.map(m => m.id === aiMsgId ? finalAiMsg : m));
+            setMessages(prev => {
+              const next = prev.map(m => m.id === aiMsgId ? finalAiMsg : m);
+              if (currentProjectId) updateWorkspace(currentProjectId, { messages: next });
+              return next;
+            });
 
             await chatStorageService.saveMessage(activeSessionId, newUserMsg, null, currentProjectId);
             await chatStorageService.saveMessage(activeSessionId, finalAiMsg, null, currentProjectId);
@@ -6176,7 +6265,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
           onScroll={handleScroll}
           className={`relative flex-1 aisa-scalable-text chatgpt-container z-20 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent ${((legalView === 'DASHBOARD' || legalView === 'PRECEDENTS') && currentMode === 'LEGAL_TOOLKIT')
             ? 'z-[30] h-full w-full overflow-hidden flex flex-col bg-slate-50 min-h-0'
-            : `overflow-y-auto ${((currentMode === 'LEGAL_TOOLKIT' && (selectedLegalTool?.id === 'legal_my_case' || selectedLegalTool?.id === 'legal_precedents')) || location.pathname === '/dashboard/cases') ? 'pt-4' : 'pt-[76px]'} lg:pt-6 pb-64 md:pb-72`
+            : `overflow-y-auto ${currentMode === 'LEGAL_TOOLKIT' || location.pathname === '/dashboard/cases' ? 'pt-4' : 'pt-[76px]'} lg:pt-6 pb-64 md:pb-72`
             }`}
           style={{
             overflowY: ((legalView === 'DASHBOARD' || legalView === 'PRECEDENTS') && currentMode === 'LEGAL_TOOLKIT') ? 'hidden' : 'auto',
@@ -6233,7 +6322,28 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                 transition={{ duration: 0.2 }}
                 className="flex-1 flex flex-col w-full select-text"
               >
-                {currentMode === 'LEGAL_TOOLKIT' && selectedLegalTool?.id === 'legal_my_case' && (
+                {/* 🚀 MINI STICKY CASE BREADCRUMB (Lightweight & Non-obstructive) */}
+                <AnimatePresence>
+                  {!isHeaderVisible && currentMode === 'LEGAL_TOOLKIT' && currentCase && (
+                    <motion.div
+                      initial={{ y: -20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: -20, opacity: 0 }}
+                      className="fixed top-4 left-1/2 -translate-x-1/2 z-[50] flex items-center gap-2 px-4 py-1.5 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-slate-200 dark:border-zinc-800 rounded-full shadow-lg pointer-events-none sm:pointer-events-auto"
+                    >
+                      <Briefcase size={12} className="text-indigo-600" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white truncate max-w-[150px]">
+                        {currentCase.name}
+                      </span>
+                      <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-zinc-700" />
+                      <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-widest">
+                        {activeTool || 'AI Legal'}
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {currentMode === 'LEGAL_TOOLKIT' && currentProjectId && (
                   <LegalWorkspaceHeader
                     currentCase={currentCase}
                     isRenamingCase={isRenamingCase}
@@ -6243,6 +6353,8 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                     setIsRenamingCase={setIsRenamingCase}
                     handleDeleteCase={handleDeleteCase}
                     handleBackToDashboard={handleBackToDashboard}
+                    selectedLegalTool={selectedLegalTool}
+                    activeTool={activeTool}
                   />
                 )}
                 {isSessionLoading ? (
@@ -6477,7 +6589,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                                 </div>
                               ) : (
                                 (msg.content || (msg.id === typingMessageId)) && (
-                                  <div id={`msg-text-${msg.id}`} className={`chat-bubble-text ${msg.role === 'model' ? 'prose prose-sm max-w-none' : ''}`}>
+                                  <div id={`msg-text-${msg.id}`} className={`chat-bubble-text break-words overflow-wrap-anywhere ${msg.role === 'model' ? 'prose prose-sm max-w-none' : ''}`}>
 
 
 
@@ -8277,7 +8389,13 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                                   </div>
                                   <span
                                     className="uppercase tracking-wide text-[8px] sm:text-[10px] font-black truncate max-w-[80px] sm:max-w-[120px] cursor-pointer hover:text-primary transition-colors"
-                                    onClick={() => setActiveLegalToolkit(true)}
+                                    onClick={() => {
+                                      if (caseId || currentProjectId) {
+                                        setIsContextualPanelOpen(true);
+                                      } else {
+                                        setActiveLegalToolkit(true);
+                                      }
+                                    }}
                                     title="Open AI Legal™"
                                   >
                                     {currentCase ? 'MY CASE' : 'AI LEGAL'}
@@ -8308,7 +8426,9 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, scale: 0.95 }}
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  console.log("[Chat] Opening Case Intelligence Panel");
                                   setIsCasePanelOpen(true);
                                   if (legalView !== 'CHAT') setLegalView('CHAT');
                                 }}
@@ -9174,11 +9294,13 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
           onClose={() => {
             setActiveLegalToolkit(false);
             // RESET ALL: Ensure we go back to the main dashboard definitively
-            setCurrentMode(MODES.NORMAL_CHAT);
-            setLegalView('CHAT');
-            setSelectedLegalTool(null);
-            setActiveTool(null);
-            localStorage.setItem('aisa_legal_view', 'CHAT');
+            if (!caseId) {
+              setCurrentMode(MODES.NORMAL_CHAT);
+              setLegalView('CHAT');
+              setSelectedLegalTool(null);
+              setActiveTool(null);
+              localStorage.setItem('aisa_legal_view', 'CHAT');
+            }
           }}
           isAdmin={isAdminUser}
           unlockedTools={unlockedTools}
@@ -9299,6 +9421,16 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
           setCurrentCase(updated);
           // Sync with the legalCases list if needed
           setAllProjects(prev => prev.map(c => c._id === updated._id ? updated : c));
+        }}
+      />
+
+      <ContextualLegalPanel
+        isOpen={isContextualPanelOpen}
+        onClose={() => setIsContextualPanelOpen(false)}
+        activeToolId={selectedLegalTool?.id}
+        onSelectTool={(toolId, toolName) => {
+          setIsContextualPanelOpen(false);
+          activateToolWithTypingEffect(toolId, toolName);
         }}
       />
     </div>
