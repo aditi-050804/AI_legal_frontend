@@ -234,12 +234,14 @@ export const useAILegalCRM = ({
       setSelectedLegalTool({ id: 'legal_my_case', name: 'My Case Assistant' });
       setLegalView('CHAT');
       setActiveTool('legal');
-      setIsCasePanelOpen(false);
+      setIsCasePanelOpen(false); // Only open when user explicitly clicks the active case pill
     }
     // setMessages([]); // REMOVED for master fix: Let initChat handle clearing if session changes
 
     // Navigate to the dedicated case route
-    navigate(`/dashboard/case/${c._id}`, { replace: true });
+    if (location.pathname !== `/dashboard/case/${c._id}`) {
+      navigate(`/dashboard/case/${c._id}`, { replace: true });
+    }
 
     setTimeout(() => {
       inputRef.current?.focus();
@@ -491,11 +493,11 @@ export const useAILegalCRM = ({
             }
             if (legalView !== 'PRECEDENTS') {
               setLegalView('CHAT');
-              if (location.pathname === '/dashboard/chat/new' || location.pathname.startsWith('/dashboard/case/')) {
+              if (location.pathname === '/dashboard/chat/new') {
                 try {
                   const caseSessions = await chatStorageService.getSessions(currentProjectId);
                   if (Array.isArray(caseSessions) && caseSessions.length > 0) {
-                    navigate(`/dashboard/chat/${caseSessions[0].sessionId}`);
+                    navigate(`/dashboard/chat/${caseSessions[0].sessionId}`, { replace: true });
                   }
                 } catch (sessionErr) {
                   console.error("Failed to fetch case sessions:", sessionErr);

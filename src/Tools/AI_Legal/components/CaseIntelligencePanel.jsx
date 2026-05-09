@@ -949,7 +949,7 @@ const CaseIntelligencePanel = ({ isOpen, onClose, currentCase, onUpdate, onUseIn
   return (
     <AnimatePresence mode="wait">
       {isOpen && (
-        <div className="fixed inset-0 z-[200] pointer-events-none">
+        <div className="fixed inset-0 z-[9999] pointer-events-none">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -991,7 +991,7 @@ const CaseIntelligencePanel = ({ isOpen, onClose, currentCase, onUpdate, onUseIn
               mass: 0.6,
               filter: { duration: 0.2 }
             }}
-            className="fixed bg-white dark:bg-[#0b0c15] shadow-[0_40px_100px_-15px_rgba(0,0,0,0.4)] flex flex-col pointer-events-auto overflow-hidden border border-black/5 dark:border-white/10 z-[201]"
+            className="fixed bg-white dark:bg-[#0b0c15] shadow-[0_40px_100px_-15px_rgba(0,0,0,0.4)] flex flex-col pointer-events-auto overflow-hidden border border-black/5 dark:border-white/10 z-[10000]"
           >
           {/* Header */}
           <div className="relative shrink-0 overflow-hidden">

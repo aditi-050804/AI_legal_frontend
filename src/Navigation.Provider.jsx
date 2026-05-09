@@ -181,12 +181,12 @@ const DashboardLayout = () => {
   const isMobile = window.innerWidth < 768;
   const searchParams = new URLSearchParams(location.search);
   const tool = searchParams.get("tool");
+  const hideNavbarTools = ["legal_my_case", "legal_precedents", "my-case", "legal-precedents"];
 
   // Jaha navbar NAHI chahiye
-  const hideNavbarTools = ["legal_my_case", "legal_precedents", "my-case", "legal-precedents"];
   const isHiddenTool = 
+    currentMode === 'LEGAL_TOOLKIT' ||
     hideNavbarTools.includes(tool) || 
-    hideNavbarTools.includes(selectedLegalTool?.id) ||
     location.pathname === '/dashboard/cases';
   
   // Navbar is hidden if it's a restricted tool view, regardless of device.

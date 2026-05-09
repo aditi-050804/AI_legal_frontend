@@ -138,8 +138,9 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--active-font-family, 'Outfit', sans-serif);
-    overflow-wrap: break-word;
-    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   /* Marked/Highlighted text styling */
@@ -863,9 +864,9 @@ html.lenis body {
   background-color: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-  word-break: break-word;
+  overflow-wrap: anywhere !important;
+  word-wrap: break-word !important;
+  word-break: normal !important;
   user-select: text !important;
   -webkit-user-select: text !important;
   pointer-events: auto !important;
@@ -1369,6 +1370,16 @@ html.lenis body {
   .chatgpt-message-content {
     gap: 0 !important;
   }
+
+  /* Safe Area Support for Mobile Input */
+  .chat-input-container {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Prevent overlapping of fixed header pills */
+  .chatgpt-container {
+    padding-top: 10px !important;
+  }
 }
 
 /* --- FOCUS MODE STYLES --- */
@@ -1523,4 +1534,29 @@ body.modal-open-hide-navbar {
 .chatgpt-message-row,
 .chatgpt-message-content {
   user-select: text !important;
+}
+
+/* Safe Area & Mobile Helpers */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+/* Ensure full height on mobile */
+@media (max-width: 640px) {
+  .chat-container {
+    height: 100dvh !important;
+  }
 }
