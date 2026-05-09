@@ -589,7 +589,6 @@ const Sidebar = ({ isOpen, onClose, onOpenSettings }) => {
             >
               MALL
             </button>
-            {console.log(import.meta.env.VITE_AI_MALL)}
           </div>
 
           <button
