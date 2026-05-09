@@ -78,7 +78,7 @@ const TradingViewWidget = ({ symbol, interval = "D", containerId = "tv_chart_con
          }
       };
 
-      // Reuse existing tv.js if already loaded â€” avoids duplicate script tags on re-renders
+      // Reuse existing tv.js if already loaded "” avoids duplicate script tags on re-renders
       if (window.TradingView) {
          initWidget();
       } else {
@@ -107,15 +107,15 @@ const TradingViewWidget = ({ symbol, interval = "D", containerId = "tv_chart_con
 };
 
 const COUNTRIES = [
-   { code: 'IN', name: 'India', flag: 'ðŸ‡®ðŸ‡³' },
-   { code: 'US', name: 'United States', flag: 'ðŸ‡ºðŸ‡¸' },
-   { code: 'GB', name: 'United Kingdom', flag: 'ðŸ‡¬ðŸ‡§' },
-   { code: 'DE', name: 'Germany', flag: 'ðŸ‡©ðŸ‡ª' },
-   { code: 'JP', name: 'Japan', flag: 'ðŸ‡¯ðŸ‡µ' },
-   { code: 'CN', name: 'China', flag: 'ðŸ‡¨ðŸ‡³' },
-   { code: 'AU', name: 'Australia', flag: 'ðŸ‡¦ðŸ‡º' },
-   { code: 'CA', name: 'Canada', flag: 'ðŸ‡¨ðŸ‡¦' },
-   { code: 'SG', name: 'Singapore', flag: 'ðŸ‡¸ðŸ‡¬' },
+   { code: 'IN', name: 'India', flag: '🇮🇳' },
+   { code: 'US', name: 'United States', flag: '🇺🇸' },
+   { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+   { code: 'DE', name: 'Germany', flag: '🇩🇪' },
+   { code: 'JP', name: 'Japan', flag: '🇯🇵' },
+   { code: 'CN', name: 'China', flag: '🇨🇳' },
+   { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+   { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+   { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
    { code: 'HK', name: 'Hong Kong', flag: 'ðŸ‡­ðŸ‡°' },
 ];
 
@@ -400,9 +400,9 @@ const CashFlowStockModal = ({ isOpen, onClose, onSelect, isDarkMode, initialStoc
    };
 
    const currencySymbol = useMemo(() => {
-      if (tabData['Realtime chart']?.quote?.currency === 'INR') return 'â‚¹';
+      if (tabData['Realtime chart']?.quote?.currency === 'INR') return '₹';
       if (selectedStock?.region === 'IN' || selectedStock?.symbol.includes('.BSE') || selectedStock?.symbol.includes('.NSE') || selectedStock?.symbol.endsWith('.BO') || selectedStock?.symbol.endsWith('.NS')) {
-         return 'â‚¹';
+         return '₹';
       }
       return '$';
    }, [selectedStock, tabData['Realtime chart']]);
@@ -465,7 +465,7 @@ const CashFlowStockModal = ({ isOpen, onClose, onSelect, isDarkMode, initialStoc
                         className={`bg-white dark:bg-[#161b27] border ${isCountryDropdownOpen ? 'border-[#5154ff] ring-4 ring-[#5154ff]/10' : 'border-gray-200 dark:border-white/8'
                            } rounded-[10px] sm:rounded-[14px] px-3 py-2.5 sm:px-5 sm:py-4 text-[13px] sm:text-[14px] font-bold flex items-center gap-2 sm:gap-3 shadow-sm cursor-pointer group transition-all min-h-[44px] sm:min-h-[54px] select-none`}
                      >
-                        <span className="text-[18px] sm:text-[22px] leading-none">{COUNTRIES.find(c => c.code === selectedCountry)?.flag || 'ðŸŒ'}</span>
+                        <span className="text-[18px] sm:text-[22px] leading-none">{COUNTRIES.find(c => c.code === selectedCountry)?.flag || '🌐'}</span>
                         <span className="text-[#888] dark:text-zinc-500 font-extrabold text-[12px] sm:text-[13px]">{selectedCountry}</span>
                         <span className="text-[#111] dark:text-white flex-1 text-[13px] sm:text-[14px] truncate">{COUNTRIES.find(c => c.code === selectedCountry)?.name || 'Unknown'}</span>
                         <ChevronDown className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 ${isCountryDropdownOpen ? 'rotate-180 text-[#5154ff]' : 'text-[#ccc] dark:text-zinc-600 group-hover:text-[#5154ff]'
@@ -803,18 +803,18 @@ const CashFlowStockModal = ({ isOpen, onClose, onSelect, isDarkMode, initialStoc
                                     </div>
                                     <div className="col-span-2 bg-white/80 dark:bg-zinc-900/80 p-2.5 sm:p-3 rounded-[14px] sm:rounded-[20px] border border-white dark:border-white/8 shadow-sm flex justify-between items-center px-4 sm:px-6">
                                        <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-[#aaa] dark:text-zinc-500">Fibonacci Level</p>
-                                       <p className="text-base sm:text-xl font-black text-[#5154ff]">â‚¹{tabData['Advisory'].advisory.indicators?.Fibonacci || '---'}</p>
+                                       <p className="text-base sm:text-xl font-black text-[#5154ff]">₹{tabData['Advisory'].advisory.indicators?.Fibonacci || '---'}</p>
                                     </div>
                                  </div>
                               </motion.div>
                            </div>
                         )}
 
-                        {/* Research Tab â€” Button always visible when tab is active */}
+                        {/* Research Tab "” Button always visible when tab is active */}
                         {activeTab === 'Research and recommendation' && selectedStock && (
                            <div className="space-y-6">
 
-                              {/* â”€â”€ Benjamin Graham Button â€” TOP, always visible â”€â”€ */}
+                              {/* â”€â”€ Benjamin Graham Button "” TOP, always visible â”€â”€ */}
                               <motion.div
                                  initial={{ opacity: 0, y: 10 }}
                                  animate={{ opacity: 1, y: 0 }}
@@ -938,7 +938,7 @@ const CashFlowStockModal = ({ isOpen, onClose, onSelect, isDarkMode, initialStoc
                                  </AnimatePresence>
                               </motion.div>
 
-                              {/* â”€â”€ Robert Kiyosaki Button â€” NEXT â”€â”€ */}
+                              {/* â”€â”€ Robert Kiyosaki Button "” NEXT â”€â”€ */}
                               <motion.div
                                  initial={{ opacity: 0, y: 10 }}
                                  animate={{ opacity: 1, y: 0 }}
@@ -1087,7 +1087,7 @@ const CashFlowStockModal = ({ isOpen, onClose, onSelect, isDarkMode, initialStoc
                                  </motion.div>
                               )}
 
-                              {/* Advisory Report â€” shows if Advisory tab was visited */}
+                              {/* Advisory Report "” shows if Advisory tab was visited */}
                               {tabData['Advisory']?.advisory?.report && (
                                  <motion.div
                                     initial={{ opacity: 0, y: 10 }}
