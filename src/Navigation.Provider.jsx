@@ -287,23 +287,22 @@ const DashboardLayout = () => {
         {allowNavbar && !isFullScreen && !isSidebarOpen && !tglState.focusMode && (
           <div
             className={`navbar fixed top-0 left-0 right-0 z-[1001] transition-transform duration-300 lg:left-[280px]
-              ${(showOnScroll || !isMobile) ? "translate-y-0" : "-translate-y-full"}`}
+              ${showOnScroll ? "translate-y-0" : "-translate-y-full"}`}
           >
             <div className="flex items-center justify-between lg:justify-end px-6 py-3 bg-transparent shrink-0">
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setIsSidebarOpen(true)}
-                className="lg:hidden w-10 h-10 flex items-center justify-center bg-primary/10 rounded-xl border border-primary/30 text-primary"
+                className="lg:hidden w-10 h-10 flex items-center justify-center bg-transparent rounded-xl border border-transparent text-primary"
               >
                 <Menu className="w-6 h-6 stroke-[2.5]" />
               </motion.button>
 
-              <div className="flex items-center gap-2">
-
+              <div className="flex items-center gap-2.5 pointer-events-auto bg-transparent backdrop-blur-md border border-transparent shadow-none rounded-2xl p-1.5 sm:p-2 transition-all duration-300">
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-xl border border-primary/30 text-primary"
+                  className="w-10 h-10 flex items-center justify-center rounded-xl text-primary transition-colors"
                 >
                   {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                 </motion.button>
@@ -313,7 +312,7 @@ const DashboardLayout = () => {
                     <motion.button
                       whileTap={{ scale: 0.9 }}
                       onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                      className="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-xl border border-primary/30 text-primary overflow-hidden"
+                      className="w-10 h-10 flex items-center justify-center bg-transparent rounded-xl border border-transparent text-primary overflow-hidden"
                     >
                       {user?.avatar ? (
                         <img src={user.avatar} alt="P" className="w-full h-full object-cover" />
@@ -340,7 +339,7 @@ const DashboardLayout = () => {
         {/* Outlet for pages */}
         <main
           className={`flex-1 ${(location.pathname.includes('/chat') || location.pathname.includes('/cases')) ? 'overflow-hidden' : 'overflow-y-auto'} relative w-full scroll-smooth p-0 scrollbar-hide transition-all duration-300 ease-in-out`}
-          style={{ paddingTop: (isMobile && (location.pathname.includes('/chat') || location.pathname.includes('/cases'))) ? '0px' : 'var(--mobile-nav-h)' }}
+          style={{ paddingTop: '0px' }}
         >
           <Outlet />
         </main>

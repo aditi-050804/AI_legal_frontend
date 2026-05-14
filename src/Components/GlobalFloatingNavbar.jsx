@@ -88,8 +88,8 @@ const GlobalFloatingNavbar = () => {
       <motion.nav
         initial={{ y: 0, opacity: 0 }}
         animate={{ 
-          y: (visible || isDesktop) ? 0 : -100,
-          opacity: 1
+          y: visible ? 0 : -100,
+          opacity: visible ? 1 : 0
         }}
         transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
         className="fixed top-0 right-0 left-0 lg:left-auto z-[1001] p-3 sm:p-5 pointer-events-none flex justify-between lg:justify-end items-center gap-3"
@@ -103,7 +103,7 @@ const GlobalFloatingNavbar = () => {
             <Menu className="w-6 h-6 stroke-[2.5]" />
         </motion.button>
 
-        <div className="flex items-center gap-2.5 pointer-events-auto bg-white/10 dark:bg-black/10 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-lg rounded-2xl p-1.5 sm:p-2 transition-all duration-300">
+        <div className="flex items-center gap-2.5 pointer-events-auto bg-transparent backdrop-blur-md border border-transparent shadow-none rounded-2xl p-1.5 sm:p-2 transition-all duration-300">
           
           {/* Theme Toggle Button - Hidden on mobile if sidebar is open */}
           {!(tglState.sidebarOpen && window.innerWidth < 1024) && (
@@ -125,7 +125,7 @@ const GlobalFloatingNavbar = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-primary/10 rounded-xl border border-primary/20 text-primary overflow-hidden shadow-inner"
+                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-transparent rounded-xl border border-transparent text-primary overflow-hidden"
               >
                 {user?.avatar ? (
                   <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
