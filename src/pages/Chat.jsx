@@ -1838,7 +1838,14 @@ const Chat = () => {
             projectId: currentProjectId
           };
 
-          setMessages(prev => prev.map(msg => msg.id === aiMsgId ? aiResponse : msg));
+          setMessages(prev => {
+            const exists = prev.some(msg => msg.id === aiMsgId);
+            if (exists) {
+              return prev.map(msg => msg.id === aiMsgId ? aiResponse : msg);
+            } else {
+              return [...prev, aiResponse];
+            }
+          });
           chatStorageService.saveMessage(activeSessionId, aiResponse, null, currentProjectId).catch(e => console.error(e));
           toast.success("File converted successfully!");
           refreshSubscription();
@@ -1870,7 +1877,14 @@ const Chat = () => {
           content: `❌ **Conversion Failed**\n${serverError}`,
           timestamp: new Date()
         };
-        setMessages(prev => prev.map(msg => msg.id === aiMsgId ? errorResponse : msg));
+        setMessages(prev => {
+          const exists = prev.some(msg => msg.id === aiMsgId);
+          if (exists) {
+            return prev.map(msg => msg.id === aiMsgId ? errorResponse : msg);
+          } else {
+            return [...prev, errorResponse];
+          }
+        });
         chatStorageService.saveMessage(activeSessionId, errorResponse, null, currentProjectId).catch(e => console.error(e));
         toast.error("Conversion failed");
       }
@@ -1952,7 +1966,14 @@ const Chat = () => {
           projectId: currentProjectId
         };
 
-        setMessages(prev => prev.map(msg => msg.id === aiMsgId ? aiResponse : msg));
+        setMessages(prev => {
+          const exists = prev.some(msg => msg.id === aiMsgId);
+          if (exists) {
+            return prev.map(msg => msg.id === aiMsgId ? aiResponse : msg);
+          } else {
+            return [...prev, aiResponse];
+          }
+        });
 
         if (replaceAssistantMsgId) {
           chatStorageService.updateMessage(activeSessionId, aiResponse, currentProjectId).catch(e => console.error(e));
@@ -1984,7 +2005,14 @@ const Chat = () => {
         content: `❌ **Conversion Failed**\n${serverError}`,
         timestamp: new Date()
       };
-      setMessages(prev => prev.map(msg => msg.id === aiMsgId ? errorResponse : msg));
+      setMessages(prev => {
+        const exists = prev.some(msg => msg.id === aiMsgId);
+        if (exists) {
+          return prev.map(msg => msg.id === aiMsgId ? errorResponse : msg);
+        } else {
+          return [...prev, errorResponse];
+        }
+      });
       chatStorageService.saveMessage(activeSessionId, errorResponse, null, currentProjectId).catch(e => console.error(e));
       toast.error("Conversion failed");
     }
@@ -3924,9 +3952,12 @@ const Chat = () => {
           navigate(`/dashboard/chat/${activeSessionId}`, { replace: true });
         }
         const fileToConvert = selectedFiles[0];
-        await manualFileToAudioConversion(fileToConvert, activeSessionId);
+        setInputValue('');
         setSelectedFiles([]);
         setFilePreviews([]);
+        await manualFileToAudioConversion(fileToConvert, activeSessionId);
+        chatLock.locked = false;
+        setIsLoading(false);
         return;
       }
 
@@ -3938,8 +3969,10 @@ const Chat = () => {
           isNavigatingRef.current = true;
           navigate(`/dashboard/chat/${activeSessionId}`, { replace: true });
         }
-        await manualTextToAudioConversion(contentToSend, activeSessionId);
         setInputValue('');
+        await manualTextToAudioConversion(contentToSend, activeSessionId);
+        chatLock.locked = false;
+        setIsLoading(false);
         return;
       }
 
@@ -6539,7 +6572,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
           onScroll={handleScroll}
           className={`relative flex-1 aisa-scalable-text chatgpt-container z-20 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent ${((legalView === 'DASHBOARD' || legalView === 'PRECEDENTS') && currentMode === 'LEGAL_TOOLKIT')
             ? 'z-[30] h-full w-full overflow-hidden flex flex-col bg-slate-50 min-h-0'
-            : `overflow-y-auto ${showFloatingNavbar ? 'pt-24' : (currentMode === 'LEGAL_TOOLKIT' || location.pathname === '/dashboard/cases' ? 'pt-4' : 'pt-[76px]')} lg:pt-6 pb-64 md:pb-72`
+            : `overflow-y-auto ${showFloatingNavbar ? 'mt-20 pt-4 sm:mt-0 sm:pt-24' : (currentMode === 'LEGAL_TOOLKIT' || location.pathname === '/dashboard/cases' ? 'pt-4' : 'mt-[65px] pt-2 sm:mt-0 sm:pt-[76px]')} lg:pt-6 pb-64 md:pb-72`
             }`}
           style={{
             overflowY: ((legalView === 'DASHBOARD' || legalView === 'PRECEDENTS') && currentMode === 'LEGAL_TOOLKIT') ? 'hidden' : 'auto',
@@ -8462,7 +8495,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
 
                     </AnimatePresence>
 
-                    <div className="flex items-center gap-1 sm:gap-2 pl-2 sm:pl-3 shrink-0">
+                    <div className="flex items-center gap-1 sm:gap-2 pl-1.5 sm:pl-3 shrink-0">
                       <div className="relative">
                         <motion.button
                           type="button"
@@ -8877,9 +8910,9 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                             }
                           }
                         }}
-                        placeholder={isLimitReached ? t('limitReached') || "Chat limit reached. Sign in to continue." : (activeTool && TOOL_PLACEHOLDERS[activeTool]) ? TOOL_PLACEHOLDERS[activeTool] : (window.innerWidth < 768 ? "Ask anything..." : typedPlaceholder)}
+                        placeholder={isLimitReached ? t('limitReached') || "Chat limit reached. Sign in to continue." : (window.innerWidth < 768 ? "Ask anything..." : ((activeTool && TOOL_PLACEHOLDERS[activeTool]) ? TOOL_PLACEHOLDERS[activeTool] : typedPlaceholder))}
                         rows={1}
-                        className={`w-full bg-transparent border-0 focus:ring-0 outline-none focus:outline-none px-2 py-1.5 sm:px-3 sm:py-2 text-slate-800 dark:text-zinc-100 text-left placeholder-slate-400 dark:placeholder-zinc-500 resize-none overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] font-normal leading-normal text-[15px] sm:text-[16px] ${isLimitReached ? 'cursor-not-allowed opacity-50' : ''}`}
+                        className={`w-full bg-transparent border-0 focus:ring-0 outline-none focus:outline-none px-1 pt-2.5 pb-0 sm:px-3 sm:py-2 text-slate-800 dark:text-zinc-100 text-left placeholder-slate-400 dark:placeholder-zinc-500 resize-none overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] font-normal leading-normal text-[15px] sm:text-[16px] ${isLimitReached ? 'cursor-not-allowed opacity-50' : ''}`}
                         style={{ minHeight: '38px', height: '38px', maxHeight: '140px' }}
                       />
                     </div>
@@ -9181,7 +9214,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
           <div className="fixed inset-0 overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-4">
               <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95 translate-y-4" enterTo="opacity-100 scale-100 translate-y-0" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
-                <Dialog.Panel className="w-full max-w-md overflow-hidden rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 bg-white/95 dark:bg-[#12121a]/95 backdrop-blur-3xl">
+                <Dialog.Panel className="w-full max-w-md overflow-hidden rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 bg-white/95 dark:bg-[#12121a]/95 backdrop-blur-3xl flex flex-col" style={{ maxHeight: 'calc(100dvh - 48px)' }}>
 
                   {/* ── Header ── */}
                   <div className="relative px-6 pt-6 pb-4">
@@ -9202,7 +9235,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                     </div>
                   </div>
 
-                  <div className="px-6 pb-6 space-y-5">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1 scrollbar-hide">
 
                     {/* ── Language Picker ── */}
                     {(() => {
@@ -9479,7 +9512,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                     </div>
 
                     {/* ── Buttons ── */}
-                    <div className="flex gap-3 pt-1">
+                    <div className="flex flex-row gap-2 sm:gap-3 pt-1">
                       <button type="button" disabled={isPlayingSample} onClick={async () => {
                         if (isPlayingSample) return;
                         setIsPlayingSample(true);
@@ -9517,7 +9550,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                           audio.play();
                           toast.dismiss(t); toast.success('Playing sample ▶');
                         } catch (e) { toast.dismiss(t); toast.error('Sample failed — check voice/language combo.'); setIsPlayingSample(false); }
-                      }} className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl border border-black/5 dark:border-white/10 text-sm font-bold transition-all ${isPlayingSample ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-300 cursor-not-allowed opacity-70' : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-subtext hover:text-maintext'}`}>
+                      }} className={`flex-1 flex items-center justify-center gap-2 h-10 sm:h-11 rounded-2xl border border-black/5 dark:border-white/10 text-sm font-bold transition-all whitespace-nowrap ${isPlayingSample ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-300 cursor-not-allowed opacity-70' : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-subtext hover:text-maintext'}`}>
                         <PlayCircle className={`w-4 h-4 ${isPlayingSample ? 'animate-pulse' : ''} text-indigo-500 dark:text-indigo-400`} /> {isPlayingSample ? t('playing') : t('playSample')}
                       </button>
                       <button type="button" onClick={() => {
@@ -9530,7 +9563,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                         setIsVoiceSettingsOpen(false);
                         toast.success(t('settingsPersisted') || 'Voice Settings Applied ✨', { icon: '🎙️' });
                       }}
-                        className="flex-[2] h-11 rounded-2xl text-sm font-bold text-white transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40"
+                        className="flex-[2] h-10 sm:h-11 rounded-2xl text-sm font-bold text-white transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 whitespace-nowrap"
                         style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
                       >
                         {t('applySettings')}

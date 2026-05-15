@@ -304,7 +304,7 @@ const MagicVideoGenModal = ({ isOpen, onClose, onCreditDeduction }) => {
     return (
         <AnimatePresence>
             {isOpen && (
-            <div className="fixed inset-0 z-[1050] flex items-center justify-center p-4 bg-transparent backdrop-blur-md">
+            <div className="fixed inset-0 z-[1050] flex items-center justify-center p-2 sm:p-4 bg-transparent backdrop-blur-md">
                 <div className="relative w-full max-w-3xl">
 
                     <motion.div
@@ -344,7 +344,7 @@ const MagicVideoGenModal = ({ isOpen, onClose, onCreditDeduction }) => {
                     animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20, rotateX: -10 }}
                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    className="relative w-full rounded-[32px] overflow-hidden flex flex-col max-h-[90vh] z-[2]"
+                    className="relative w-full rounded-[24px] sm:rounded-[32px] overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[90vh] z-[2]"
                     style={{ 
                         transformStyle: "preserve-3d",
                         boxShadow: isDark ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' : '0 20px 50px rgba(99, 102, 241, 0.08), inset 0 1px 0 rgba(255,255,255,0.8)'
@@ -384,7 +384,7 @@ const MagicVideoGenModal = ({ isOpen, onClose, onCreditDeduction }) => {
                     <div className="absolute inset-0 z-[2] opacity-[0.015] pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
                     <div className={`absolute inset-0 rounded-[32px] border ${isDark ? 'border-white/10' : 'border-white/55'} z-[3] pointer-events-none`} />
 
-                    <div className={`relative z-[8] px-6 py-5 border-b border-black/[0.05] flex items-center justify-between backdrop-blur-md shrink-0 ${isDark ? 'bg-zinc-900/40' : 'bg-white/35'}`}>
+                    <div className={`relative z-[8] px-3 sm:px-6 py-3 sm:py-5 border-b border-black/[0.05] flex items-center justify-between backdrop-blur-md shrink-0 ${isDark ? 'bg-zinc-900/40' : 'bg-white/35'}`}>
                         <div className="absolute top-0 right-10 w-[200px] h-full bg-gradient-to-l from-white/30 to-transparent pointer-events-none blur-xl" />
                         <div className="flex items-center gap-3.5 relative">
                             <div className="relative">
@@ -394,21 +394,22 @@ const MagicVideoGenModal = ({ isOpen, onClose, onCreditDeduction }) => {
                                 </motion.div>
                             </div>
                             <div>
-                                <h2 className="text-[16px] font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1">
+                                <h2 className="text-[13px] sm:text-[16px] font-black text-slate-900 dark:text-white tracking-tight leading-none mb-0.5 sm:mb-1">
                                     {showHistory ? 'Your Video History' : 'Image to Video Magic'}
                                 </h2>
-                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em]">
+                                <p className="text-[8px] sm:text-[9px] text-slate-500 font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em]">
                                     {showHistory ? 'Previously generated videos' : `Google Vertex AI Veo ⚡ ${getCreditCost()} Credits`}
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 relative">
+                        <div className="flex items-center gap-1.5 sm:gap-2 relative">
                             {!showHistory ? (
                                 <button
                                     onClick={() => setShowHistory(true)}
-                                    className="flex items-center gap-2 px-3 py-1.5 text-[12px] font-semibold text-slate-500 hover:text-slate-800 hover:bg-white/60 rounded-lg transition-colors"
+                                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 text-[11px] sm:text-[12px] font-semibold text-slate-500 hover:text-slate-800 hover:bg-white/60 rounded-lg transition-colors"
                                 >
-                                    <History className="w-4 h-4" /> History
+                                    <History className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                    <span className="hidden sm:inline">History</span>
                                 </button>
                             ) : (
                                 <button
@@ -466,10 +467,10 @@ const MagicVideoGenModal = ({ isOpen, onClose, onCreditDeduction }) => {
                             )}
                         </div>
                     ) : (
-                        <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar flex flex-col gap-4 relative z-[8]">
+                        <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-3 sm:py-4 custom-scrollbar flex flex-col gap-3 sm:gap-4 relative z-[8]">
 
-                            <div className={`grid grid-cols-1 ${isGenerating || resultVideoUrl ? 'md:grid-cols-2' : ''} gap-4`}>
-                                <div className={`flex flex-col gap-2 ${!isGenerating && !resultVideoUrl ? 'max-w-[280px] mx-auto w-full' : ''}`}>
+                            <div className={`grid grid-cols-1 ${isGenerating || resultVideoUrl ? 'md:grid-cols-2' : ''} gap-3 sm:gap-4`}>
+                                <div className={`flex flex-col gap-2 ${!isGenerating && !resultVideoUrl ? 'max-w-[260px] sm:max-w-[280px] mx-auto w-full' : ''}`}>
                                     <span className="text-[9px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-[0.25em] self-start ml-1">Source Image</span>
                                     {previewUrl ? (
                                         <div className="relative group w-full aspect-square bg-white/40 rounded-[20px] overflow-hidden border border-white/70 shadow-sm">
@@ -489,7 +490,7 @@ const MagicVideoGenModal = ({ isOpen, onClose, onCreditDeduction }) => {
                                             onDragOver={handleDragOver}
                                             onDragLeave={handleDragLeave}
                                             onDrop={handleDrop}
-                                            className={`w-full aspect-square bg-white/40 border-2 border-dashed ${isDragging ? 'border-primary bg-primary/10' : 'border-white/70 hover:border-primary/40'} rounded-[20px] flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/60 transition-all text-slate-600 group shadow-sm`}
+                                            className={`w-full aspect-video sm:aspect-square bg-white/40 border-2 border-dashed ${isDragging ? 'border-primary bg-primary/10' : 'border-white/70 hover:border-primary/40'} rounded-[16px] sm:rounded-[20px] flex flex-col items-center justify-center gap-2 sm:gap-3 cursor-pointer hover:bg-white/60 transition-all text-slate-600 group shadow-sm`}
                                         >
                                             <div className={`w-12 h-12 rounded-full ${isDragging ? 'bg-primary/20' : 'bg-white/70'} flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm border border-white/80`}>
                                                 <Upload className={`w-6 h-6 ${isDragging ? 'text-primary' : 'text-slate-500'}`} />
@@ -524,7 +525,7 @@ const MagicVideoGenModal = ({ isOpen, onClose, onCreditDeduction }) => {
                             </div>
 
                             {/* Controls */}
-                            <div className="flex flex-wrap gap-3 shrink-0">
+                            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 shrink-0">
                                 <div className="flex flex-col gap-2 w-full sm:w-auto flex-1 text-left">
                                     <div className="flex items-center gap-2 ml-1">
                                         <div className="w-1 h-1 rounded-full bg-slate-800 shadow-[0_0_6px_rgba(0,0,0,0.4)]" />
@@ -617,28 +618,28 @@ const MagicVideoGenModal = ({ isOpen, onClose, onCreditDeduction }) => {
 
                     {/* Footer Actions */}
                     {!showHistory && (
-                        <div className="px-6 py-4 border-t border-black/[0.05] bg-white/35 backdrop-blur-md flex items-center justify-between shrink-0 relative z-[8]">
+                        <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-black/[0.05] bg-white/35 backdrop-blur-md flex flex-row items-center justify-between gap-2 shrink-0 relative z-[8]">
                             <button
                                 onClick={handleReset}
-                                className="text-sm font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+                                className="text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-700 transition-colors shrink-0"
                             >
                                 Reset
                             </button>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-end">
                                 {resultVideoUrl && (
                                     <button
                                         onClick={handleDownload}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-white/70 hover:bg-white/90 text-slate-700 rounded-xl font-semibold text-sm transition-all border border-white/80 shadow-sm"
+                                        className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/70 hover:bg-white/90 text-slate-700 rounded-xl font-semibold text-xs sm:text-sm transition-all border border-white/80 shadow-sm"
                                     >
-                                        <Download className="w-4 h-4" /> Download
+                                        <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Download
                                     </button>
                                 )}
 
                                 <button
                                     onClick={handleGenerate}
                                     disabled={!selectedImage || !prompt.trim() || isGenerating}
-                                    className={`relative flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm overflow-hidden transition-all duration-300 ${(!selectedImage || !prompt.trim() || isGenerating)
+                                    className={`relative flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm overflow-hidden transition-all duration-300 ${(!selectedImage || !prompt.trim() || isGenerating)
                                         ? 'bg-white/50 text-slate-400 cursor-not-allowed border border-white/60 shadow-sm'
                                         : 'text-white border border-transparent shadow-[0_8px_20px_rgba(99,102,241,0.35)] hover:shadow-[0_12px_30px_rgba(99,102,241,0.5)] transform hover:scale-[1.02] active:scale-[0.98]'
                                         }`}
@@ -650,18 +651,18 @@ const MagicVideoGenModal = ({ isOpen, onClose, onCreditDeduction }) => {
                                           transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
                                         />
                                     )}
-                                    <div className="relative z-10 flex items-center gap-2">
+                                    <div className="relative z-10 flex items-center gap-1.5 sm:gap-2">
                                         {isGenerating ? (
                                             <>
-                                                <Loader2 className="w-4 h-4 animate-spin text-white" /> Generating...
+                                                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin text-white" /> <span className="hidden sm:inline">Generating...</span><span className="sm:hidden">...</span>
                                             </>
                                         ) : resultVideoUrl ? (
                                             <>
-                                                <RotateCw className="w-4 h-4" /> Regenerate
+                                                <RotateCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Regenerate
                                             </>
                                         ) : (
                                             <>
-                                                <Wand2 className="w-4 h-4" /> Generate Video
+                                                <Wand2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Generate Video
                                             </>
                                         )}
                                     </div>

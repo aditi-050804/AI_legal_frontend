@@ -171,45 +171,47 @@ const ModernDashboard = ({ userName, onToolSelect, activeToolId, activeCategory 
 
 
       {/* Tool Grid Area */}
-      <AnimatePresence mode="wait">
-        {activeCategory && (
-          <motion.div
-            key={activeCategory + '_tools'}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
-          >
-            <div className={gridClass}>
-              {currentCategoryData?.tools.map((tool, index) => {
-                const tools = currentCategoryData.tools;
-                const isLastOdd = tools.length % 2 !== 0 && index === tools.length - 1;
-                return (
-                  <motion.div
-                    key={tool.id}
-                    initial={{ opacity: 0, y: 16, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className={`sm:w-auto sm:h-auto ${isLastOdd ? 'col-span-2 flex justify-center sm:col-span-1 sm:block' : 'w-full'}`}
-                    transition={{
-                      duration: 0.35,
-                      delay: index * 0.05,
-                      ease: [0.23, 1, 0.32, 1]
-                    }}
-                  >
-                    <DashboardCard
-                      tool={tool}
-                      onSelect={onToolSelect}
-                      isActive={activeToolId === tool.id}
-                      isDark={isDark}
-                      isCentered={isLastOdd}
-                    />
-                  </motion.div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="min-h-[360px] sm:min-h-[280px] w-full pt-1 sm:pt-2">
+        <AnimatePresence mode="wait">
+          {activeCategory && (
+            <motion.div
+              key={activeCategory + '_tools'}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
+            >
+              <div className={gridClass}>
+                {currentCategoryData?.tools.map((tool, index) => {
+                  const tools = currentCategoryData.tools;
+                  const isLastOdd = tools.length % 2 !== 0 && index === tools.length - 1;
+                  return (
+                    <motion.div
+                      key={tool.id}
+                      initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      className={`sm:w-auto sm:h-auto ${isLastOdd ? 'col-span-2 flex justify-center sm:col-span-1 sm:block' : 'w-full'}`}
+                      transition={{
+                        duration: 0.35,
+                        delay: index * 0.05,
+                        ease: [0.23, 1, 0.32, 1]
+                      }}
+                    >
+                      <DashboardCard
+                        tool={tool}
+                        onSelect={onToolSelect}
+                        isActive={activeToolId === tool.id}
+                        isDark={isDark}
+                        isCentered={isLastOdd}
+                      />
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

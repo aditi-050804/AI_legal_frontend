@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, TrendingUp, BarChart3, Globe, Zap, Loader2, Check, ExternalLink, ChevronDown, Activity, Sparkles, AlertCircle, Maximize, BookOpen, Shield, TrendingDown, Award, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
@@ -117,7 +117,7 @@ const COUNTRIES = [
    { code: 'AU', name: 'Australia', flag: '🇦🇺' },
    { code: 'CA', name: 'Canada', flag: '🇨🇦' },
    { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
-   { code: 'HK', name: 'Hong Kong', flag: 'ðŸ‡­ðŸ‡°' },
+   { code: 'HK', name: 'Hong Kong', flag: '🇭🇰' },
 ];
 
 const CashFlowStockModal = ({ isOpen, onClose, onSelect, isDarkMode, initialStock }) => {
@@ -251,7 +251,12 @@ const CashFlowStockModal = ({ isOpen, onClose, onSelect, isDarkMode, initialStoc
  
        const token = JSON.parse(localStorage.getItem('user') || '{}')?.token;
        const headers = { 'Authorization': `Bearer ${token}` };
+       
        const params = { symbol: selectedStock.symbol };
+       if (!window.hasAICashFlowLoaded) {
+          params.isInitialLoad = 'true';
+          window.hasAICashFlowLoaded = true;
+       }
  
        if (activeTab === 'Realtime chart') {
           // Check if we already have intraday data for this stock to prevent double deduction
