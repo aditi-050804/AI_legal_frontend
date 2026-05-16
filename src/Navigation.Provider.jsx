@@ -127,6 +127,9 @@ const useScrollNavbar = () => {
   const ticking = useRef(false);
   const isLocked = useRef(false);
   const lockTimeout = useRef(null);
+  // Use a ref to mirror `visible` so the scroll handler never becomes stale
+  // without needing `visible` in the effect dependency array.
+  const visibleRef = useRef(true);
   const scrollThreshold = 15;
 
   useEffect(() => {
@@ -134,16 +137,16 @@ const useScrollNavbar = () => {
       if (isLocked.current) return;
 
       const target = e.target;
-      
+
       // In DashboardLayout, the document itself does not scroll (fixed inset-0).
       // Any document scroll events are bogus (mobile browser UI shifts, etc) and cause flickering.
       if (target === document || target === document.documentElement || target === window) {
-        return; 
+        return;
       }
-      
+
       const isChat = target.classList && target.classList.contains('chatgpt-container');
       const isMain = target.tagName === 'MAIN';
-      
+
       // Only track scroll events from our known scrollable containers
       if (!isChat && !isMain) return;
 
@@ -155,7 +158,8 @@ const useScrollNavbar = () => {
 
           // Always show at top (with a small buffer for bounce)
           if (currentScrollY <= 10) {
-            if (!visible) {
+            if (!visibleRef.current) {
+              visibleRef.current = true;
               setVisible(true);
               isLocked.current = true;
               clearTimeout(lockTimeout.current);
@@ -170,7 +174,8 @@ const useScrollNavbar = () => {
           if (Math.abs(diff) > scrollThreshold) {
             if (currentScrollY > prevScrollY) {
               // scroll down
-              if (visible) {
+              if (visibleRef.current) {
+                visibleRef.current = false;
                 setVisible(false);
                 isLocked.current = true;
                 clearTimeout(lockTimeout.current);
@@ -178,7 +183,8 @@ const useScrollNavbar = () => {
               }
             } else {
               // scroll up
-              if (!visible) {
+              if (!visibleRef.current) {
+                visibleRef.current = true;
                 setVisible(true);
                 isLocked.current = true;
                 clearTimeout(lockTimeout.current);
@@ -194,9 +200,10 @@ const useScrollNavbar = () => {
     };
 
     // Use capture: true to catch scroll events from child containers like #chat-container
+    // NOTE: No `visible` in deps — visibleRef keeps the handler fresh without re-registration
     window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
     return () => window.removeEventListener("scroll", handleScroll, { capture: true, passive: true });
-  }, [visible]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return visible;
 };
@@ -380,16 +387,20 @@ const SSOInterceptor = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const setUserRecoil = useSetRecoilState(userData);
+  // Ref to ensure SSO handoff only runs once per token
+  const processedSSORef = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const ssoToken = params.get('sso_token');
     const fromApp = params.get('from');
+    const currentPathname = location.pathname;
 
     // Only process if we have a token AND we aren't already logged in
-    if (ssoToken) {
+    if (ssoToken && !processedSSORef.current) {
+      processedSSORef.current = true;
       // Strip token from URL immediately to prevent re-triggering
-      window.history.replaceState({}, '', location.pathname);
+      window.history.replaceState({}, '', currentPathname);
 
       const existingToken = localStorage.getItem('token');
       const hasValidToken = !!existingToken && existingToken !== 'undefined' && existingToken !== 'null';
@@ -404,8 +415,8 @@ const SSOInterceptor = ({ children }) => {
             localStorage.setItem("userId", user.id);
             localStorage.setItem("token", token);
             // After successful handoff, just let them be on the dashboard!
-            if (location.pathname === '/' || location.pathname === '/login') {
-               navigate('/dashboard/chat', { replace: true });
+            if (currentPathname === '/' || currentPathname === '/login') {
+              navigate('/dashboard/chat', { replace: true });
             }
           })
           .catch(err => {
@@ -415,12 +426,12 @@ const SSOInterceptor = ({ children }) => {
           .finally(() => setIsVerifying(false));
       } else {
         // If already logged in, just ensure they go to the dashboard if they were sent to login
-        if (location.pathname === '/login' || location.pathname === '/') {
+        if (currentPathname === '/login' || currentPathname === '/') {
           navigate('/dashboard/chat', { replace: true });
         }
       }
     }
-  }, [location, navigate, setUserRecoil]);
+  }, [location.search, location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isVerifying) {
     return (

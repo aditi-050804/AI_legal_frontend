@@ -651,13 +651,20 @@ const Chat = () => {
   const [isMagicEditing, setIsMagicEditing] = useState(false);
   const [isMagicImageModalOpen, setIsMagicImageModalOpen] = useState(false);
 
-  // --- Global Generation Sync ---
-  // Keeps local Chat UI state in sync with the global generation store.
-  // This allows the typewriter to continue even after navigation.
+  // ─── Global Parallel Generation Store Sync ───────────────────────────────
+  // Use refs to mirror local state so the effect can read them without needing
+  // them in the dependency array (which would cause a re-registration loop).
+  const isLoadingRef = useRef(false);
+  const typingMessageIdRef = useRef(null);
+
   useEffect(() => {
     if (gen.isGenerating) {
-      if (!isLoading) setIsLoading(true);
-      if (gen.typingMessageId && gen.typingMessageId !== typingMessageId) {
+      if (!isLoadingRef.current) {
+        isLoadingRef.current = true;
+        setIsLoading(true);
+      }
+      if (gen.typingMessageId && gen.typingMessageId !== typingMessageIdRef.current) {
+        typingMessageIdRef.current = gen.typingMessageId;
         setTypingMessageId(gen.typingMessageId);
       }
       if (gen.partialResponse && gen.typingMessageId) {
@@ -680,10 +687,17 @@ const Chat = () => {
         });
       }
     } else {
-      if (isLoading) setIsLoading(false);
-      if (typingMessageId) setTypingMessageId(null);
+      if (isLoadingRef.current) {
+        isLoadingRef.current = false;
+        setIsLoading(false);
+      }
+      if (typingMessageIdRef.current) {
+        typingMessageIdRef.current = null;
+        setTypingMessageId(null);
+      }
     }
-  }, [gen.isGenerating, gen.partialResponse, gen.typingMessageId, isLoading, typingMessageId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gen.isGenerating, gen.partialResponse, gen.typingMessageId]);
   const [editRefImage, setEditRefImage] = useState(null);
   const [isMagicVideoModalOpen, setIsMagicVideoModalOpen] = useState(false);
   const [isSocialMediaDashboardOpen, setIsSocialMediaDashboardOpen] = useState(false);
@@ -885,36 +899,50 @@ const Chat = () => {
   const [showGmailModal, setShowGmailModal] = useState(false);
 
   // ─── Connector OAuth Callback Handler ───
+  // Guard ensures the navigate() call only runs once per connector callback,
+  // preventing the URL change from re-triggering this effect.
+  const connectorCallbackHandledRef = useRef(false);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const connectorSuccess = params.get('connector_success');
     const connectorError = params.get('connector_error');
 
-    if (connectorSuccess === 'true') {
-      // Show the feature showcase modal
-      setShowGmailModal(true);
-      // Clean the URL so modal doesn't re-fire on refresh
-      navigate(location.pathname, { replace: true });
-    } else if (connectorError) {
-      toast.error('Failed to connect Gmail. Please try again from Settings > Connectors.', { duration: 3000 });
-      navigate(location.pathname, { replace: true });
+    if ((connectorSuccess === 'true' || !!connectorError) && !connectorCallbackHandledRef.current) {
+      connectorCallbackHandledRef.current = true;
+      if (connectorSuccess === 'true') {
+        setShowGmailModal(true);
+      } else {
+        toast.error('Failed to connect Gmail. Please try again from Settings > Connectors.', { duration: 3000 });
+      }
+      // Clean the URL — use replaceState directly to avoid triggering location change
+      window.history.replaceState({}, '', location.pathname);
+    } else if (!connectorSuccess && !connectorError) {
+      // Reset guard when there is no connector param (normal navigation)
+      connectorCallbackHandledRef.current = false;
     }
-  }, [location.search]);
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Direct Feature Link Handling & Persistence ───
+  // Guard prevents this from re-running when navigate() updates location.pathname
+  const lastHandledSearchRef = useRef(null);
   useEffect(() => {
+    // Only process each unique search string once to avoid navigate() loops
+    if (location.search === lastHandledSearchRef.current) return;
+
     const params = new URLSearchParams(location.search);
     const modeParam = params.get('mode')?.toLowerCase();
     const toolParam = params.get('tool')?.toLowerCase();
 
     if (toolParam === 'ai_ads') {
+      lastHandledSearchRef.current = location.search;
       setIsSocialMediaDashboardOpen(true);
       return; // Do not clear the URL parameter so it persists on refresh
     }
 
     if (modeParam || (toolParam && !toolParam.startsWith('legal_'))) {
+      lastHandledSearchRef.current = location.search;
       // Simply clear other params and land in chat without any popups or auto-activations
-      navigate(location.pathname, { replace: true });
+      window.history.replaceState({}, '', location.pathname);
     }
 
     // Auto-activate legal tools from URL if they exist
@@ -924,6 +952,7 @@ const Chat = () => {
         manualToolSelectionRef.current = null;
         return;
       }
+      lastHandledSearchRef.current = location.search;
       console.log(`[RouteActivation] Activating legal tool from URL: ${toolParam}`);
       const legalTool = PREMIUM_TOOLS.find(t => t.id === toolParam);
       activateToolWithTypingEffect(toolParam, legalTool?.name, true);
@@ -939,7 +968,8 @@ const Chat = () => {
         setSelectedLegalTool(null);
       }
     }
-  }, [location.search, navigate, location.pathname, activeSessionId, location.state, currentMode, activeLegalToolkit, setSelectedLegalTool, setActiveTool, setCurrentMode, activeTool]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, activeSessionId, location.state?.fromTool]);
 
 
   // Sync AI Ads Dashboard state to the URL so it persists on refresh
@@ -1196,31 +1226,31 @@ const Chat = () => {
   const toolsMenuRef = useRef(null);
 
   useEffect(() => {
-    if (isImageGeneration) { setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
+    if (isImageGeneration) { setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setIsCashFlowMode(false); setIsStockModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
   }, [isImageGeneration]);
   useEffect(() => {
-    if (isVideoGeneration) { setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsImageGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
+    if (isVideoGeneration) { setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsImageGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setIsCashFlowMode(false); setIsStockModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
   }, [isVideoGeneration]);
   useEffect(() => {
-    if (isDeepSearch) { setIsImageGeneration(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
+    if (isDeepSearch) { setIsImageGeneration(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setIsCashFlowMode(false); setIsStockModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
   }, [isDeepSearch]);
   useEffect(() => {
-    if (isWebSearch) { setIsImageGeneration(false); setIsDeepSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
+    if (isWebSearch) { setIsImageGeneration(false); setIsDeepSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setIsCashFlowMode(false); setIsStockModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
   }, [isWebSearch]);
   useEffect(() => {
-    if (isAudioConvertMode) { setIsImageGeneration(false); setIsDeepSearch(false); setIsWebSearch(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
+    if (isAudioConvertMode) { setIsImageGeneration(false); setIsDeepSearch(false); setIsWebSearch(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setIsCashFlowMode(false); setIsStockModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
   }, [isAudioConvertMode]);
   useEffect(() => {
-    if (isDocumentConvert) { setIsImageGeneration(false); setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
+    if (isDocumentConvert) { setIsImageGeneration(false); setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setIsCashFlowMode(false); setIsStockModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
   }, [isDocumentConvert]);
   useEffect(() => {
-    if (isCodeWriter) { setIsImageGeneration(false); setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
+    if (isCodeWriter) { setIsImageGeneration(false); setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setIsCashFlowMode(false); setIsStockModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
   }, [isCodeWriter]);
   useEffect(() => {
-    if (isMagicEditing) { setIsImageGeneration(false); setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
+    if (isMagicEditing) { setIsImageGeneration(false); setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsFileAnalysis(false); setIsMagicVideoModalOpen(false); setIsCashFlowMode(false); setIsStockModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
   }, [isMagicEditing]);
   useEffect(() => {
-    if (isFileAnalysis) { setIsImageGeneration(false); setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsMagicVideoModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
+    if (isFileAnalysis) { setIsImageGeneration(false); setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsMagicVideoModalOpen(false); setIsCashFlowMode(false); setIsStockModalOpen(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
   }, [isFileAnalysis]);
   useEffect(() => {
     if (isMagicVideoModalOpen) { setIsImageGeneration(false); setIsDeepSearch(false); setIsWebSearch(false); setIsAudioConvertMode(false); setIsDocumentConvert(false); setIsCodeWriter(false); setIsVideoGeneration(false); setIsMagicEditing(false); setIsFileAnalysis(false); setIsCashFlowMode(false); setActiveLegalToolkit(false); setCurrentMode(null); setSelectedLegalTool(null); }
@@ -7684,13 +7714,13 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                 )}
                 {gen.isGenerating && !gen.typingMessageId && (
                   <div className="chatgpt-message-row ai-row group mb-6 sm:mb-8">
-                    <div className="chatgpt-message-content select-text">
+                    <div className="chatgpt-message-content select-text" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
                       <div className="chatgpt-avatar-container w-8 h-8 rounded-full flex items-center justify-center shrink-0">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center">
                           <img src={logo} alt="AISA" className="w-6 h-[18px] object-cover object-top" />
                         </div>
                       </div>
-                      <div className="flex-1 chatgpt-text select-text">
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
                         <AisaTypingIndicator
                           visible={true}
                           message={loadingText}
