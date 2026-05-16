@@ -4,6 +4,7 @@
 @plugin "@tailwindcss/typography";
 @custom-variant dark (&:where(.dark, .dark *));
 
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -1604,10 +1605,10 @@ body.modal-open-hide-navbar {
   }
 }
 
-::selection { background: rgba(180, 180, 180, 0.28) !important; color: inherit !important; }
-::-moz-selection { background: rgba(180, 180, 180, 0.28) !important; color: inherit !important; }
-.dark ::selection { background: rgba(255, 255, 255, 0.18) !important; color: inherit !important; }
-.dark ::-moz-selection { background: rgba(255, 255, 255, 0.18) !important; color: inherit !important; }
+::selection { background: rgba(147, 197, 253, 0.6) !important; color: inherit !important; }
+::-moz-selection { background: rgba(147, 197, 253, 0.6) !important; color: inherit !important; }
+.dark ::selection { background: rgba(37, 99, 235, 0.5) !important; color: inherit !important; }
+.dark ::-moz-selection { background: rgba(37, 99, 235, 0.5) !important; color: inherit !important; }
 
 .chatgpt-message-row { user-select: text !important; }
 .chatgpt-message-row * { user-select: text !important; }
