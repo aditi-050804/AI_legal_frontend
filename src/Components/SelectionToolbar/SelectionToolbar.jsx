@@ -23,6 +23,7 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { copyText } from '../../utils/clipboard';
 
 /**
  * ActionButton
@@ -127,19 +128,17 @@ const SelectionToolbar = ({
 
   const handleCopy = useCallback((e) => {
     e.preventDefault();
-    try {
-      navigator.clipboard.writeText(selection.text);
-      setCopied(true);
-      toast.success('Copied to clipboard', { icon: '📋' });
-      if (onAction) onAction('copy');
-      // Auto-close the toolbar shortly after copying
-      setTimeout(() => {
-        setCopied(false);
-        if (onClose) onClose();
-      }, 600);
-    } catch (err) {
-      toast.error('Failed to copy');
-    }
+    copyText(selection.text)
+      .then(() => {
+        setCopied(true);
+        toast.success('Copied to clipboard', { icon: '📋' });
+        if (onAction) onAction('copy');
+        setTimeout(() => {
+          setCopied(false);
+          if (onClose) onClose();
+        }, 600);
+      })
+      .catch(() => toast.error('Failed to copy'));
   }, [selection.text, onAction, onClose]);
 
 

@@ -37,6 +37,7 @@ import { jsPDF } from 'jspdf';
 import { toCanvas } from 'html-to-image';
 import html2canvas from 'html2canvas';
 import { detectMode, getModeName, getModeIcon, getModeColor, MODES } from '../utils/modeDetection';
+import { copyText } from '../utils/clipboard';
 import { userData, getUserData, clearUser, sessionsData, toggleState, memoryData, activeProjectIdData, activeModeData, activeLegalToolData, activeProjectsData, legalViewData } from '../userStore/userData';
 import { usePersonalization } from '../context/PersonalizationContext';
 import OnboardingModal from '../Components/OnboardingModal';
@@ -5297,7 +5298,7 @@ ${documentConvertActive ? `### DOCUMENT CONVERSION MODE ENABLED (CRITICAL):
           return;
         } catch (err) {
           console.warn("Direct PDF copy failed, falling back to text only:", err);
-          await navigator.clipboard.writeText(msg.content);
+          await copyText(msg.content);
           toast.success("Text copy ho gaya! (PDF copy browser mein limited hai)");
           return;
         }
@@ -5661,7 +5662,7 @@ ${documentConvertActive ? `### DOCUMENT CONVERSION MODE ENABLED (CRITICAL):
           if (processToastId) toast.success("PDF aur Text copy ho gaya! 📋", { id: processToastId });
         } catch (err) {
           console.warn("Binary copy failed:", err);
-          await navigator.clipboard.writeText(msg.content);
+          await copyText(msg.content);
           if (processToastId) toast.success("Text copy ho gaya!", { id: processToastId });
         }
       } else if (action === 'share') {
@@ -6100,7 +6101,7 @@ ${documentConvertActive ? `### DOCUMENT CONVERSION MODE ENABLED (CRITICAL):
     // Trim
     clean = clean.trim();
 
-    navigator.clipboard.writeText(clean);
+    copyText(clean);
     toast.success("Copied to clipboard!");
   };
 
@@ -7140,7 +7141,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                                                         </div>
                                                         <button
                                                           onClick={() => {
-                                                            navigator.clipboard.writeText(codeValue);
+                                                            copyText(codeValue);
                                                             toast.success("Code copied!");
                                                           }}
                                                           className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 hover:text-white transition-all bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg border border-white/5 active:scale-95"

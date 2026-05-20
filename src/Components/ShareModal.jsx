@@ -5,6 +5,7 @@ import { X, Copy, Check, MessageCircle, Mail, Send, Share2, Globe, Link as LinkI
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { apis } from '../types';
+import { copyText } from '../utils/clipboard';
 
 const ShareModal = ({ isOpen, onClose, shareId, sessionTitle, sessionId }) => {
   const [copied, setCopied] = useState(false);
@@ -15,7 +16,7 @@ const ShareModal = ({ isOpen, onClose, shareId, sessionTitle, sessionId }) => {
   const shareLink = `${window.location.origin}/share/${shareId}`;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(shareLink);
+    copyText(shareLink).catch(() => {});
     setCopied(true);
     toast.success('Link copied to clipboard!');
     setTimeout(() => setCopied(false), 2000);
