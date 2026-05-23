@@ -563,7 +563,7 @@ const Hero = () => {
           <motion.button
             whileHover={{ scale: 1.05, background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(99, 102, 241, 0.12)' }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => window.location.href = import.meta.env.VITE_AI_MALL}
+            onClick={() => window.location.href = import.meta.env.VITE_AI_MALL || 'https://aimall24.com'}
             style={{
               padding: '16px 42px', borderRadius: '16px',
               background: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(99, 102, 241, 0.06)',
