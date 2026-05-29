@@ -19,71 +19,139 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
   || 'dummy_client_id_to_prevent_crash';
 
 // ─── Visual Viewport Manager ───
-// Fixes mobile keyboard push-up by tracking the real visible height
-// and exposing it as --real-vh for use in CSS.
-// Also directly patches the #aisa-app-root container height.
+// Definitive fix for Android Chrome mobile keyboard push-up.
+// Strategy: Lock body scroll + track visualViewport + set CSS vars + patch DOM directly.
 const VisualViewportManager = () => {
   useEffect(() => {
+    const isMobile = () => window.innerWidth < 1024;
     const root = document.documentElement;
+    let isSetup = false;
 
-    const setViewportVars = () => {
+    // ── Step 1: Lock body to prevent Android Chrome's auto-scroll on input focus ──
+    // This is the most critical fix. When body is position:fixed, the browser
+    // cannot scroll it, so focusing an input never shifts the entire page.
+    const lockBody = () => {
+      if (!isMobile() || isSetup) return;
+      isSetup = true;
+      document.documentElement.style.cssText += ';height:100%;overflow:hidden;';
+      document.body.style.cssText += ';position:fixed;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;';
+      // Prevent window scroll restore attempts
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    };
+
+    const unlockBody = () => {
+      // Only unlock on desktop
+      if (isMobile()) return;
+      document.documentElement.style.height = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+      document.body.style.overflow = '';
+      document.body.style.overscrollBehavior = '';
+      isSetup = false;
+    };
+
+    // ── Step 2: Track visualViewport and update CSS variables + DOM directly ──
+    const updateViewport = () => {
       const vv = window.visualViewport;
-      const h = vv ? vv.height : window.innerHeight;
-      const w = vv ? vv.width : window.innerWidth;
+      const fullH = window.screen.height;
+      const vh = vv ? vv.height : window.innerHeight;
+      const vw = vv ? vv.width : window.innerWidth;
+      // offsetTop = distance from top of layout viewport to top of visual viewport
+      // (positive when content is scrolled behind keyboard)
+      const offsetTop = vv ? vv.offsetTop : 0;
 
-      // Set CSS variables (used by styled components via var(--real-vh))
-      root.style.setProperty('--real-vh', `${h}px`);
-      root.style.setProperty('--real-vw', `${w}px`);
-      root.style.setProperty('--dvh', `${h * 0.01}px`);
+      // Calculate actual keyboard height
+      const windowH = window.innerHeight;
+      const keyboardH = Math.max(0, windowH - vh - offsetTop);
 
-      // Directly patch the main app container height for maximum reliability
-      // This ensures it works on Android Chrome even without dvh/interactive-widget support
+      // Set CSS variables
+      root.style.setProperty('--real-vh', `${vh}px`);
+      root.style.setProperty('--real-vw', `${vw}px`);
+      root.style.setProperty('--dvh', `${vh * 0.01}px`);
+      root.style.setProperty('--keyboard-height', `${keyboardH}px`);
+      root.style.setProperty('--keyboard-safe-bottom', `${Math.max(keyboardH, parseInt(getComputedStyle(root).getPropertyValue('--safe-area-bottom') || '0'))}px`);
+
+      // Directly patch #aisa-app-root — height = visual viewport height
       const appRoot = document.getElementById('aisa-app-root');
       if (appRoot) {
-        appRoot.style.height = `${h}px`;
-        appRoot.style.maxHeight = `${h}px`;
+        appRoot.style.height = `${vh}px`;
+        appRoot.style.maxHeight = `${vh}px`;
+        // Also neutralize any leftover bottom offset from inset-0
+        appRoot.style.bottom = 'auto';
       }
     };
 
-    // Set immediately on mount
-    setViewportVars();
+    // ── Step 3: Guard against window scroll (belt and suspenders) ──
+    const preventWindowScroll = () => {
+      if (isMobile() && (window.scrollX !== 0 || window.scrollY !== 0)) {
+        window.scrollTo(0, 0);
+      }
+    };
 
-    // Use a small delay after focus events (keyboard animation takes ~300ms on Android)
+    // ── Step 4: On input focus, guard scroll + update after keyboard settles ──
     let focusTimer = null;
-    const handleFocusIn = (e) => {
+    const onFocusIn = (e) => {
       const tag = e.target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.contentEditable === 'true') {
-        // Keyboard is opening — wait for it to settle then recalculate
+        preventWindowScroll();
         clearTimeout(focusTimer);
-        focusTimer = setTimeout(setViewportVars, 350);
+        // Short delay: keyboard animation is ~250-400ms on Android
+        focusTimer = setTimeout(() => {
+          preventWindowScroll();
+          updateViewport();
+        }, 300);
       }
     };
-    const handleFocusOut = () => {
-      // Keyboard is closing — recalculate after animation
+    const onFocusOut = () => {
       clearTimeout(focusTimer);
-      focusTimer = setTimeout(setViewportVars, 350);
+      focusTimer = setTimeout(() => {
+        preventWindowScroll();
+        updateViewport();
+      }, 300);
     };
 
+    // ── Initialize ──
+    lockBody();
+    updateViewport();
+
+    // ── Event Listeners ──
     const vv = window.visualViewport;
     if (vv) {
-      vv.addEventListener('resize', setViewportVars);
-      vv.addEventListener('scroll', setViewportVars);
+      vv.addEventListener('resize', updateViewport, { passive: true });
+      vv.addEventListener('scroll', updateViewport, { passive: true });
     }
-    window.addEventListener('resize', setViewportVars);
-    window.addEventListener('orientationchange', setViewportVars);
-    document.addEventListener('focusin', handleFocusIn, true);
-    document.addEventListener('focusout', handleFocusOut, true);
+    window.addEventListener('resize', updateViewport, { passive: true });
+    window.addEventListener('scroll', preventWindowScroll, { passive: true });
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => { lockBody(); updateViewport(); }, 400);
+    });
+    document.addEventListener('focusin', onFocusIn, true);
+    document.addEventListener('focusout', onFocusOut, true);
+
+    // ── Handle resize to desktop ──
+    const resizeObserver = new ResizeObserver(() => {
+      if (!isMobile()) {
+        unlockBody();
+      } else {
+        lockBody();
+      }
+      updateViewport();
+    });
+    resizeObserver.observe(document.documentElement);
 
     return () => {
       clearTimeout(focusTimer);
       if (vv) {
-        vv.removeEventListener('resize', setViewportVars);
-        vv.removeEventListener('scroll', setViewportVars);
+        vv.removeEventListener('resize', updateViewport);
+        vv.removeEventListener('scroll', updateViewport);
       }
-      window.removeEventListener('resize', setViewportVars);
-      window.removeEventListener('orientationchange', setViewportVars);
-      document.removeEventListener('focusin', handleFocusIn, true);
-      document.removeEventListener('focusout', handleFocusOut, true);
+      window.removeEventListener('resize', updateViewport);
+      window.removeEventListener('scroll', preventWindowScroll);
+      document.removeEventListener('focusin', onFocusIn, true);
+      document.removeEventListener('focusout', onFocusOut, true);
+      resizeObserver.disconnect();
     };
   }, []);
 

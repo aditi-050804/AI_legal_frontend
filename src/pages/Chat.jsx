@@ -7907,7 +7907,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="absolute inset-0 z-[50] pointer-events-none flex flex-col items-center justify-center sm:justify-start overflow-hidden sm:overflow-y-auto sm:overflow-x-hidden sm:pb-32 md:pb-48 scrollbar-hide pt-0 sm:pt-6"
+                className="absolute inset-0 z-[50] pointer-events-none flex flex-col items-center justify-center sm:justify-start overflow-hidden sm:overflow-y-auto sm:overflow-x-hidden sm:pb-32 md:pb-48 scrollbar-hide pt-0 sm:pt-6 aisa-welcome-screen-overlay"
               >
                 <div className="relative z-10 flex flex-col items-center w-full max-w-7xl mx-auto px-3 sm:px-6 h-max mt-0 sm:mt-0 pointer-events-auto">
                   <ModernDashboard 
@@ -8042,7 +8042,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
 
         {/* Unified Chat Input Container */}
         {legalView !== 'DASHBOARD' && legalView !== 'PRECEDENTS' && (
-          <div className={`absolute bottom-0 left-0 right-0 z-[1001] pointer-events-none ${(tglState.sidebarOpen && window.innerWidth < 1024) ? 'hidden' : ''}`}>
+          <div className={`absolute bottom-0 left-0 right-0 z-[1001] pointer-events-none aisa-chat-input-container ${(tglState.sidebarOpen && window.innerWidth < 1024) ? 'hidden' : ''}`}>
             {/* Background solid layer to hide text scrolling behind/below input */}
             <div className="relative z-20 bg-slate-50 dark:bg-[#0b0c15] sm:bg-white sm:dark:bg-[#0b0c15]" style={{ padding: '0.5rem 1rem calc(1.75rem + env(safe-area-inset-bottom, 0px)) 1rem' }}>
               <div className="max-w-4xl mx-auto w-full pointer-events-auto">
