@@ -1868,49 +1868,74 @@ body.modal-open-hide-navbar {
 
 
 /* ═══════════════════════════════════════════════════════════════════
-   MOBILE KEYBOARD FIX — Stable layout when virtual keyboard opens
-   Prevents page-push-up on Android Chrome and iOS Safari
+   MOBILE KEYBOARD FIX v3 — Definitive stable layout solution
+   Reference: ChatGPT / WhatsApp Web mobile behavior
+   Strategy: Lock body + visual viewport tracking + keyboard-height var
    ═══════════════════════════════════════════════════════════════════ */
 
-/* 1. Root height variable (set by VisualViewportManager in main.jsx) */
+/* ── 1. CSS Variables (JS overwrites these in real-time) ── */
 :root {
   --real-vh: 100dvh;
   --real-vw: 100dvw;
   --dvh: 1dvh;
+  --keyboard-height: 0px;
+  --keyboard-safe-bottom: 0px;
 }
 
-/* 2. Prevent BODY from scrolling/bouncing on mobile */
+/* ── 2. Lock HTML + Body to prevent Android auto-scroll on focus ──
+   This is the #1 fix. `position: fixed` on body stops Chrome from
+   scrolling the page when the keyboard opens. JS also sets this.       */
 @media (max-width: 1023px) {
   html {
-    height: 100%;
-    overflow: hidden;
+    height: 100% !important;
+    overflow: hidden !important;
+    /* Prevent any unintended scroll restoration */
+    overscroll-behavior: none !important;
   }
 
   body {
-    height: 100%;
-    overflow: hidden;
-    /* Prevent iOS rubber-band scroll from moving the whole page */
-    overscroll-behavior: none;
-    -webkit-tap-highlight-color: transparent;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    /* Disable iOS bounce that causes layout jumps */
+    -webkit-overflow-scrolling: auto !important;
   }
 
   #root {
-    height: 100%;
-    overflow: hidden;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
   }
 }
 
-/* 3. Dashboard layout root — explicitly sized to visual viewport
-      JS (VisualViewportManager) sets this via inline style too, this is the CSS fallback */
+/* ── 3. Dashboard root container — sized to visual viewport ──
+   JS sets inline height directly; this is the CSS fallback.
+   `bottom: auto` overrides inset-0's `bottom: 0` so height wins. */
 #aisa-app-root {
-  /* Ensure the main shell always exactly matches visual viewport height */
   height: var(--real-vh, 100dvh) !important;
   max-height: var(--real-vh, 100dvh) !important;
-  /* Ensure nothing overflows out of view */
   overflow: hidden !important;
 }
 
-/* 4. Mobile navbar stays fixed and unaffected by keyboard */
+@media (max-width: 1023px) {
+  #aisa-app-root {
+    /* Override inset-0's bottom:0 so our height takes effect */
+    bottom: auto !important;
+  }
+}
+
+/* ── 4. Navbar — always fixed at top, unaffected by keyboard ── */
 @media (max-width: 1023px) {
   .navbar {
     position: fixed !important;
@@ -1918,40 +1943,58 @@ body.modal-open-hide-navbar {
     left: 0 !important;
     right: 0 !important;
     z-index: 1001 !important;
-    will-change: transform !important;
+    /* GPU layer prevents repaint on keyboard open */
     transform: translateZ(0) !important;
+    will-change: transform !important;
   }
 }
 
-/* 5. Chat input — sticks above keyboard, never gets buried */
-@media (max-width: 1023px) {
-  .chat-input-wrapper,
-  .chat-input-container {
-    position: sticky !important;
-    bottom: 0 !important;
-    padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
-    z-index: 100 !important;
-    flex-shrink: 0 !important;
-    transform: translateZ(0) !important;
-    will-change: transform !important;
-    background-color: inherit !important;
-  }
-}
-
-/* 6. Scrollable chat area shrinks smoothly, not pushes up */
+/* ── 5. Chat scrollable area — fills available height, shrinks with keyboard ── */
 @media (max-width: 1023px) {
   .chatgpt-container {
     flex: 1 1 auto !important;
     min-height: 0 !important;
-    -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior: contain !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
+    /* Momentum scroll on iOS */
+    -webkit-overflow-scrolling: touch !important;
+    /* Prevent scroll chaining to parent */
+    overscroll-behavior: contain !important;
+    /* Tight bottom padding — input is abs positioned */
+    padding-bottom: 120px !important;
+  }
+
+  .chatgpt-container.tool-active {
+    padding-bottom: 180px !important;
   }
 }
 
-/* 7. Prevent iOS zoom on input focus (font-size < 16px triggers zoom) */
+/* ── 6. Main flex area — overflow clipped, flex column ── */
 @media (max-width: 1023px) {
+  main {
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+  }
+
+  .flex-1 {
+    min-height: 0 !important;
+  }
+}
+
+/* ── 7. Input bar outer wrapper — uses keyboard-height to stay above keyboard ──
+   The input container div uses absolute bottom-0 positioning.
+   We add bottom padding equal to --keyboard-height so it floats above the keyboard.
+   This is the KEY fix for the reference image behavior. */
+@media (max-width: 1023px) {
+  /* The main input wrapper div (absolute bottom-0 in Chat.jsx) */
+  .aisa-chat-input-wrapper {
+    /* Font size ≥ 16px prevents iOS auto-zoom on focus */
+    font-size: 16px !important;
+  }
+
+  /* All inputs & textareas — prevent iOS zoom */
   input[type="text"],
   input[type="email"],
   input[type="password"],
@@ -1961,27 +2004,28 @@ body.modal-open-hide-navbar {
   input[type="number"],
   textarea,
   [contenteditable="true"] {
-    font-size: max(16px, 1em) !important;
-    transform: translateZ(0);
+    /* iOS zooms in when font-size < 16px. This prevents that zoom jump. */
+    font-size: max(16px, 0.9rem) !important;
+    /* GPU layer for smooth keyboard transition */
+    transform: translateZ(0) !important;
   }
 }
 
-/* 8. Sidebar stays full device height, independent of keyboard */
+/* ── 8. Sidebar — full device height, never affected by keyboard ── */
 @media (max-width: 1023px) {
   .sidebar-container,
   aside {
-    height: 100vh !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
     position: fixed !important;
     top: 0 !important;
     bottom: 0 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
 }
 
-/* 9. Modals use real-vh to stay fully visible on keyboard-open screens */
+/* ── 9. Modals — bounded by visual viewport height ── */
 @media (max-width: 1023px) {
   .modal-default,
   .modal-maximized,
@@ -1991,33 +2035,40 @@ body.modal-open-hide-navbar {
   }
 }
 
-/* 10. Landscape + keyboard: very tiny height — compact mode */
+/* ── 10. Landscape + keyboard compact mode ── */
 @media (max-width: 1023px) and (orientation: landscape) and (max-height: 500px) {
   .chatgpt-container {
     padding-top: 50px !important;
   }
+
   .chat-bubble-text {
     padding: 8px 12px !important;
     font-size: 12px !important;
   }
 }
 
-/* 11. Main flex column — no overflow bleed */
-@media (max-width: 1023px) {
-  main {
+/* ── 11. Prevent welcome screen gap (large empty space between cards and input) ── */
+@media (max-width: 767px) {
+  /* Welcome screen overlay — clip to parent, scroll internally */
+  .chatgpt-container > .absolute.inset-0 {
     overflow: hidden !important;
-    display: flex !important;
-    flex-direction: column !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Remove desktop-scale bottom padding that causes the gap */
+  .sm\:pb-32,
+  .md\:pb-48 {
+    padding-bottom: 8px !important;
   }
 }
 
-/* 12. Flex-1 children shrink instead of overflow */
-@media (max-width: 1023px) {
-  .flex-1 {
-    min-height: 0 !important;
+/* ── 12. Disable height-change transitions on mobile (prevents jump animation) ── */
+@media (max-width: 767px) {
+  #aisa-app-root {
+    transition: none !important;
   }
 }
-
 /* ─── ADDITIONAL MOBILE KEYBOARD FIXES ─── */
 
 /* 13. Fix the large empty gap between content and input bar on mobile.
@@ -2056,7 +2107,7 @@ body.modal-open-hide-navbar {
        We ensure it stays at the very bottom of the visible area. */
 @media (max-width: 767px) {
   /* The input container wrapper in Chat.jsx */
-  .absolute.bottom-0.left-0.right-0.z-\\[1001\\] {
+  .aisa-chat-input-container {
     /* Stay anchored to bottom with safe-area padding */
     padding-bottom: env(safe-area-inset-bottom, 0px) !important;
     /* Prevent keyboard from overlapping */
@@ -2090,10 +2141,11 @@ body.modal-open-hide-navbar {
   }
 
   /* Center welcome screen items at the actual visible center */
-  .absolute.inset-0.z-\\[50\\].pointer-events-none {
+  .aisa-welcome-screen-overlay {
     justify-content: flex-start !important;
     padding-top: 20px !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
 }
+
