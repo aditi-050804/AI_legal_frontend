@@ -788,11 +788,12 @@
   }
 }
 
-@media (max-width: 1100px) {
+@media (min-width: 1025px) and (max-width: 1200px) {
   .pricing-grid {
     overflow-x: auto;
     justify-content: flex-start;
     padding-bottom: 20px;
+    -webkit-overflow-scrolling: touch;
   }
 
   .pricing-card {
@@ -801,39 +802,161 @@
   }
 }
 
+/* ═══════════════════════════════════════════
+   PORTABLE LAYOUT — General Adjustments (≤ 1024px)
+   ═══════════════════════════════════════════ */
+@media (max-width: 1024px) {
+
+  /* Page container — allow natural vertical scroll */
+  .pricing-page {
+    padding: 20px 0 100px;
+    overflow-x: hidden;
+  }
+
+  .back-button {
+    position: relative;
+    top: 0;
+    left: 16px;
+    margin-bottom: 20px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    width: fit-content;
+  }
+
+  /* Header adjustments */
+  .pricing-header {
+    padding: 0 16px;
+    margin-bottom: 28px;
+  }
+
+  .pricing-header h1 {
+    font-size: 1.7rem;
+    line-height: 1.15;
+  }
+
+  .pricing-header p {
+    font-size: 0.875rem;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   TABLET CAROUSEL — Horizontal Carousel (769px - 1024px)
+   ═══════════════════════════════════════════ */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* ── Carousel Container ── */
+  .pricing-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: scroll !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-snap-type: x mandatory !important;
+    scroll-behavior: smooth !important;
+    gap: 12px !important;
+    padding: 12px 16px 24px !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    align-items: stretch !important;
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .pricing-grid::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* ── Each Card snaps into view — 2 cards visible on tablets ── */
+  .pricing-card {
+    flex: 0 0 42vw !important;
+    min-width: 260px !important;
+    max-width: 340px !important;
+    scroll-snap-align: center !important;
+    scroll-snap-stop: always !important;
+    padding: 22px 18px 18px !important;
+    border-radius: 20px !important;
+    /* Lift effect when focused */
+    transition: box-shadow 0.3s ease, transform 0.3s ease !important;
+  }
+
+  /* Popular card — slightly bigger */
+  .pricing-card.popular {
+    flex: 0 0 44vw !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   MOBILE VERTICAL LAYOUT — Stacked Cards (≤ 768px)
+   ═══════════════════════════════════════════ */
 @media (max-width: 768px) {
+  /* ── Stacked Grid Container ── */
   .pricing-grid {
     display: flex !important;
     flex-direction: column !important;
-    max-width: 450px;
-    width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    gap: 16px;
-    padding: 10px 15px;
+    align-items: center !important;
+    gap: 24px !important;
+    padding: 12px 16px 36px !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow-x: visible !important;
+    scroll-snap-type: none !important;
   }
 
+  /* ── Stacked pricing cards take full visible width ── */
   .pricing-card {
-    max-width: 100%;
-    padding: 18px;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: 380px !important;
+    scroll-snap-align: none !important;
+    padding: 24px 20px 20px !important;
+    border-radius: 20px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;
   }
 
+  /* Popular card layout reset */
+  .pricing-card.popular {
+    flex: 0 0 auto !important;
+    transform: none !important;
+    box-shadow: 0 8px 30px rgba(99, 102, 241, 0.15) !important;
+  }
+  
+  .pricing-card:hover {
+    transform: translateY(-4px) !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  /* ── CTA Button ── */
   .cta-button {
-    padding: 8px 10px;
-    font-size: 0.75rem;
+    padding: 12px 16px !important;
+    font-size: 0.85rem !important;
+    border-radius: 14px !important;
+  }
+
+  /* ── Comparison Table ── */
+  .comparison-section {
+    padding: 0 12px;
+    margin-top: 40px;
+  }
+
+  .comparison-section h2 {
+    font-size: 1.4rem;
+    margin-bottom: 24px;
   }
 
   .comparison-table-wrapper {
-    margin-top: 20px;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-    max-width: 100%;
+    margin-top: 16px;
+    border-radius: 14px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
   }
 
   .comparison-table {
-    min-width: 500px;
-    /* Reduced to fit more content on screen */
+    min-width: 720px;
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
@@ -847,62 +970,169 @@
     line-height: 1.2;
     padding: 10px 4px !important;
     font-size: 0.7rem;
-    min-width: 70px;
+    min-width: 85px;
   }
 
   .comparison-table td {
     padding: 8px 4px;
     font-size: 0.7rem;
-    min-width: 70px;
+    min-width: 85px;
   }
 
   .comparison-table th:first-child,
   .comparison-table td:first-child {
-    padding-left: 8px;
+    padding-left: 12px;
     font-size: 0.75rem;
-    min-width: 90px;
+    min-width: 140px;
     z-index: 25;
     box-shadow: 4px 0 10px rgba(0, 0, 0, 0.12);
+    white-space: normal !important;
+    text-align: left;
   }
 
-  .comparison-table-wrapper::after {
-    content: "← Scroll to see all plans →";
-    display: block;
-    text-align: center;
-    font-size: 0.65rem;
-    color: #94a3b8;
-    padding: 8px 0;
-    font-weight: 700;
-    background: #f8fafc;
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
+  /* Make sticky first th/td background cover scrolled content correctly */
+  .comparison-table th:first-child {
+    background-color: #f8fafc !important;
   }
 
-  .dark .comparison-table-wrapper::after {
-    background: #111827;
-    color: #4b5563;
+  .comparison-table td:first-child {
+    background-color: #ffffff !important;
   }
 
+  /* Hide repetitive AISA badge in comparison rows on mobile to save space */
+  .comparison-table .aisa-badge-small {
+    display: none !important;
+  }
+
+  /* Sticky column dark background override */
   .dark .comparison-table th:first-child,
   .dark .comparison-table td:first-child {
     background-color: #111827 !important;
   }
+}
 
-  .pricing-header h1 {
-    font-size: 1.6rem;
+/* ── Swipe hint pill shown below the carousel ── */
+.pricing-swipe-hint {
+  display: none;
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .pricing-swipe-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 auto 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #94a3b8;
+    letter-spacing: 0.03em;
+    animation: swipeHintFade 2.5s ease-in-out 1s both;
+  }
+
+  .pricing-swipe-hint svg {
+    width: 14px;
+    height: 14px;
+    animation: swipeArrow 1.2s ease-in-out 1s infinite;
+  }
+
+  @keyframes swipeHintFade {
+    0%   { opacity: 0; transform: translateY(4px); }
+    20%  { opacity: 1; transform: translateY(0); }
+    80%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  @keyframes swipeArrow {
+    0%, 100% { transform: translateX(0); }
+    50%       { transform: translateX(5px); }
+  }
+
+  /* ── Dot indicator bar ── */
+  .pricing-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 0 16px;
+  }
+
+  .pricing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #cbd5e1;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .pricing-dot.active {
+    width: 20px;
+    border-radius: 3px;
+    background: #6366f1;
+  }
+
+  .dark .pricing-dot {
+    background: #334155;
+  }
+
+  .dark .pricing-dot.active {
+    background: #818cf8;
+  }
+}
+
+.comparison-swipe-hint {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .comparison-swipe-hint {
+    display: block;
+    text-align: center;
+    font-size: 0.65rem;
+    color: #94a3b8;
+    padding: 12px 0 0;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
   }
 }
 
 @media (max-width: 480px) {
   .pricing-page {
-    padding: 20px 12px;
+    padding: 16px 0 100px;
+  }
+
+  .back-button {
+    left: 12px !important;
   }
 
   .pricing-header h1 {
-    font-size: 1.4rem;
+    font-size: 1.45rem;
   }
 
   .comparison-section h2 {
-    font-size: 1.4rem;
+    font-size: 1.2rem;
+  }
+
+  /* Optimize modal overlay padding and spacing on phones */
+  .credit-modal {
+    padding: 24px 16px !important;
+    border-radius: 18px !important;
+  }
+
+  .modal-header h3 {
+    font-size: 1.3rem !important;
+  }
+
+  .package-item {
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .package-credits {
+    font-size: 1rem !important;
   }
 }
 
