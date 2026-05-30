@@ -118,8 +118,12 @@ const VisualViewportManager = () => {
     // ── Initialize ──
     if (shouldLock) {
       lockBody();
+      document.body.classList.add('is-dashboard');
+      document.body.classList.remove('is-landing-page');
     } else {
       unlockBody();
+      document.body.classList.add('is-landing-page');
+      document.body.classList.remove('is-dashboard');
     }
     updateViewport();
 

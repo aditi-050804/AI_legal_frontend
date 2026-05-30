@@ -9,6 +9,9 @@ if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
 }
 
+// Skip on mobile to prevent CPU freeze
+const isMobileDevice = () => typeof window !== 'undefined' && window.innerWidth < 1024;
+
 const FlowingAICreature = () => {
   const { theme } = useTheme();
   const normalizedTheme = typeof theme === 'string' ? theme.toLowerCase() : 'system';
@@ -55,6 +58,8 @@ const FlowingAICreature = () => {
   );
 
   useEffect(() => {
+    // Skip entirely on mobile to prevent CPU freeze
+    if (isMobileDevice()) return;
     // Artificial small delay to ensure DOM readiness
     const timer = setTimeout(() => setIsLoaded(true), 100);
     return () => clearTimeout(timer);
@@ -127,16 +132,18 @@ const FlowingAICreature = () => {
         ease: "power3.out"
       });
 
-      // ── Organic Sinusoidal Swimming ──
-      gsap.to(containerRef.current, {
-        y: "+=20",
-        x: "+=10",
-        rotationZ: "+=2",
-        duration: 3,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut"
-      });
+      // ── Organic Sinusoidal Swimming (desktop only) ──
+      if (!isMobileDevice()) {
+        gsap.to(containerRef.current, {
+          y: "+=20",
+          x: "+=10",
+          rotationZ: "+=2",
+          duration: 3,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut"
+        });
+      }
 
       // ── Footer "Bloom Explosion" Trigger ──
       ScrollTrigger.create({
@@ -187,6 +194,9 @@ const FlowingAICreature = () => {
       console.error("GSAP Animation Failed:", err);
     }
   }, [isLoaded]);
+
+  // Don't render at all on mobile — prevents GPU/CPU freeze
+  if (isMobileDevice()) return null;
 
   return (
     <div 

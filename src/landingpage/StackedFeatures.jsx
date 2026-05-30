@@ -733,7 +733,7 @@ const StackedFeatures = () => {
   }, []);
 
   return (
-    <div style={{ overflow: 'hidden' }}>
+    <div>
       <div ref={wrapperRef} className="sf-wrapper" style={{ height: '100vh', overflow: 'hidden' }}>
         <div
           ref={trackRef}
@@ -771,9 +771,9 @@ const StackedFeatures = () => {
                   overflow: 'hidden',
                 }}
               >
-                {/* Glows */}
-                <div className="sf-glow-1" style={{ position:'absolute', top:'10%', right:'-5%', width:'55vw', height:'70vh', borderRadius:'50%', background:`radial-gradient(circle,${feat.accentGlow} 0%,transparent 65%)`, filter:'blur(60px)', pointerEvents:'none' }}/>
-                <div className="sf-glow-2" style={{ position:'absolute', bottom:'-10%', left:'5%', width:'40vw', height:'50vh', borderRadius:'50%', background:`radial-gradient(circle,${feat.accentGlow.replace('0.35','0.1').replace('0.3','0.08')} 0%,transparent 70%)`, filter:'blur(70px)', pointerEvents:'none' }}/>
+                {/* Glows - skip heavy blur on mobile */}
+                <div className="sf-glow-1 sf-desktop-only" style={{ position:'absolute', top:'10%', right:'-5%', width:'55vw', height:'70vh', borderRadius:'50%', background:`radial-gradient(circle,${feat.accentGlow} 0%,transparent 65%)`, filter:'blur(60px)', pointerEvents:'none' }}/>
+                <div className="sf-glow-2 sf-desktop-only" style={{ position:'absolute', bottom:'-10%', left:'5%', width:'40vw', height:'50vh', borderRadius:'50%', background:`radial-gradient(circle,${feat.accentGlow.replace('0.35','0.1').replace('0.3','0.08')} 0%,transparent 70%)`, filter:'blur(70px)', pointerEvents:'none' }}/>
 
                 <div className="sf-content-grid" style={{ 
                   position:'relative', zIndex:10, 
@@ -874,6 +874,7 @@ const StackedFeatures = () => {
 
         /* Mobile Optimization */
         @media (max-width: 900px) {
+          .sf-desktop-only { display: none !important; }
           .sf-content-grid {
             grid-template-columns: 1fr !important;
             height: 90vh !important;

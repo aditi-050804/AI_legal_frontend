@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getPlans, getCreditPackages, purchasePlan, buyCredits, createSubscriptionOrder, getSubscriptionDetails } from '../services/pricingService';
 import './Pricing.css';
@@ -19,11 +19,42 @@ const Pricing = () => {
   const [processing, setProcessing] = useState(false);
   const [currentPlanName, setCurrentPlanName] = useState('');
   const [userState, setUserState] = useRecoilState(userData);
+  const [activeCard, setActiveCard] = useState(0);
+  const gridRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth <= 1024);
+  const [isTabletCarousel, setIsTabletCarousel] = useState(typeof window !== 'undefined' && window.innerWidth > 768 && window.innerWidth <= 1024);
 
   useEffect(() => {
     fetchPricingData();
     fetchCurrentPlan();
+
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 1024);
+      setIsTabletCarousel(window.innerWidth > 768 && window.innerWidth <= 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // ── Tablet: track active card via scroll position ──
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid || !isTabletCarousel) return;
+    const handleScroll = () => {
+      const cardWidth = grid.clientWidth * 0.42;
+      const idx = Math.round(grid.scrollLeft / (cardWidth + 12));
+      setActiveCard(Math.max(0, Math.min(idx, plans.length - 1)));
+    };
+    grid.addEventListener('scroll', handleScroll, { passive: true });
+    return () => grid.removeEventListener('scroll', handleScroll);
+  }, [plans.length, isTabletCarousel]);
+
+  const scrollToCard = (idx) => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    const cardWidth = grid.clientWidth * 0.42;
+    grid.scrollTo({ left: idx * (cardWidth + 12), behavior: 'smooth' });
+  };
 
   const fetchCurrentPlan = async () => {
     const user = localStorage.getItem('token') || localStorage.getItem('auth_token');
@@ -329,6 +360,9 @@ const Pricing = () => {
             </tbody>
           </table>
         </div>
+        <div className="comparison-swipe-hint">
+          ← Swipe to explore plans details →
+        </div>
       </div>
     );
   };
@@ -378,7 +412,16 @@ const Pricing = () => {
         </div>
       </div>
 
-      <div className="pricing-grid">
+      {/* ── Mobile swipe hint ── */}
+      {isTabletCarousel && (
+        <div className="pricing-swipe-hint" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5l7 7-7 7"/></svg>
+          <span>Swipe to explore plans</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5l7 7-7 7"/></svg>
+        </div>
+      )}
+
+      <div className="pricing-grid" ref={gridRef}>
         {plans.map((plan) => {
           const isFounder = plan.planName.toLowerCase().includes('startup pro') || plan.planName.toLowerCase().includes('startup');
           const isFree = plan.priceMonthly === 0 && plan.priceYearly === 0;
@@ -507,6 +550,22 @@ const Pricing = () => {
           );
         })}
       </div>
+
+      {/* ── Mobile dot indicators ── */}
+      {plans.length > 0 && isTabletCarousel && (
+        <div className="pricing-dots" role="tablist" aria-label="Plan selector">
+          {plans.map((_, i) => (
+            <button
+              key={i}
+              className={`pricing-dot${activeCard === i ? ' active' : ''}`}
+              onClick={() => scrollToCard(i)}
+              role="tab"
+              aria-selected={activeCard === i}
+              aria-label={`Plan ${i + 1}`}
+            />
+          ))}
+        </div>
+      )}
 
       {renderComparisonTable()}
 

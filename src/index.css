@@ -146,6 +146,59 @@
     touch-action: manipulation;
   }
 
+  /* ─── MOBILE SCROLL FIX ───
+   * Ensure the html/body can scroll naturally on non-dashboard pages.
+   * Dashboard pages use position:fixed via JS (VisualViewportManager) for
+   * keyboard handling; all other pages need natural browser scroll.
+   * This overrides any stale JS-injected overflow:hidden on page transitions.
+   */
+  @media (max-width: 1023px) {
+    html:not([style*="overflow:hidden"]),
+    html:not([style*="overflow: hidden"]) {
+      overflow-y: auto !important;
+    }
+  }
+
+  /* ─── LANDING PAGE SCROLL FIX ───
+   * On mobile, the #root element must NOT be position:fixed or overflow:hidden.
+   * The DashboardLayout component manages its own fixed layout internally via #aisa-app-root.
+   * For all public pages (landing, login, signup, pricing) we need natural scroll.
+   * The .is-landing-page class is added by VisualViewportManager based on the current route.
+   */
+  @media (max-width: 1023px) {
+    body.is-landing-page #root {
+      overflow-y: auto;
+      height: auto;
+      min-height: 100dvh;
+      position: static;
+    }
+    body.is-landing-page {
+      overflow-y: auto;
+      position: static;
+      height: auto;
+    }
+    html:has(body.is-landing-page) {
+      overflow-y: auto;
+      height: auto;
+    }
+  }
+
+  /* Reduce heavy blur effects on mobile for performance */
+  @media (max-width: 768px) {
+    /* Disable expensive GPU compositing on mobile */
+    .backdrop-blur-3xl {
+      backdrop-filter: blur(12px) !important;
+      -webkit-backdrop-filter: blur(12px) !important;
+    }
+    /* Disable blur-[90px] style heavy blurs */
+    [class*="blur-\[90px\]"],
+    [class*="blur-\[120px\]"],
+    [class*="blur-\[60px\]"],
+    [class*="blur-\[70px\]"] {
+      filter: none !important;
+    }
+  }
+
   /* Marked/Highlighted text styling */
   mark {
     background-color: rgba(85, 85, 255, 0.1);
