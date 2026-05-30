@@ -1350,7 +1350,7 @@ const Sidebar = ({ isOpen, onClose, onOpenSettings }) => {
           <div className="fixed inset-0 overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-4 text-center">
               <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-3xl bg-white dark:bg-zinc-900 p-8 text-left align-middle shadow-2xl transition-all border border-zinc-200 dark:border-zinc-800">
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-3xl bg-white dark:bg-zinc-900 p-6 sm:p-8 text-left align-middle shadow-2xl transition-all border border-zinc-200 dark:border-zinc-800">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-black text-maintext">Apps & Connectors</h3>
                     <button onClick={() => setIsConnectorsOpen(false)} className="text-subtext hover:text-maintext p-1 rounded-lg hover:bg-black/5 transition-all"><X size={20} /></button>
@@ -1359,10 +1359,10 @@ const Sidebar = ({ isOpen, onClose, onOpenSettings }) => {
                     {(() => {
                       const gmailApp = user?.personalizations?.apps?.find(a => a.name === 'Gmail');
                       return (
-                        <div className={`p-5 rounded-2xl border transition-all ${gmailApp ? 'border-primary/30 bg-primary/5' : 'border-border'}`}>
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-xl bg-white dark:bg-[#1E2438] border border-border flex items-center justify-center shadow-sm">
+                        <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${gmailApp ? 'border-primary/30 bg-primary/5' : 'border-border'}`}>
+                          <div className="flex items-center justify-between gap-3 sm:gap-4">
+                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                              <div className="w-12 h-12 rounded-xl bg-white dark:bg-[#1E2438] border border-border flex items-center justify-center shadow-sm shrink-0">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-8 h-8">
                                   <path fill="#4caf50" d="M45,16.2l-5,2.75l-5,4.75L35,40h7c1.657,0,3-1.343,3-3V16.2z" />
                                   <path fill="#1e88e5" d="M3,16.2l3.614,1.71L13,23.7V40H6c-1.657,0-3-1.343-3-3V16.2z" />
@@ -1371,9 +1371,11 @@ const Sidebar = ({ isOpen, onClose, onOpenSettings }) => {
                                   <path fill="#fbc02d" d="M45,12.298V16.2l-10,7.5V11.2l3.124-2.341C38.868,8.301,39.772,8,40.702,8h0 C43.076,8,45,9.924,45,12.298z" />
                                 </svg>
                               </div>
-                              <div>
-                                <h4 className="font-bold text-sm">Gmail</h4>
-                                <p className="text-[10px] text-subtext">{gmailApp ? (gmailApp.tokens?.email_address || 'Connected') : 'Connect your Gmail'}</p>
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-sm truncate">Gmail</h4>
+                                <p className="text-[10px] text-subtext truncate" title={gmailApp ? (gmailApp.tokens?.email_address || 'Connected') : 'Connect your Gmail'}>
+                                  {gmailApp ? (gmailApp.tokens?.email_address || 'Connected') : 'Connect your Gmail'}
+                                </p>
                               </div>
                             </div>
                             <button
@@ -1395,7 +1397,7 @@ const Sidebar = ({ isOpen, onClose, onOpenSettings }) => {
                                   } catch (e) { toast.error("Failed to initiate"); }
                                 }
                               }}
-                              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all ${gmailApp ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'bg-primary text-white hover:opacity-90'}`}
+                              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all shrink-0 whitespace-nowrap ${gmailApp ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'bg-primary text-white hover:opacity-90'}`}
                             >
                               {gmailApp ? 'Disconnect' : 'Connect'}
                             </button>
