@@ -623,12 +623,12 @@ const Sidebar = ({ isOpen, onClose, onOpenSettings }) => {
 
             <button
               onClick={onClose}
-              className={`lg:hidden p-2 rounded-xl transition-all border shadow-sm active:scale-95
+              className={`lg:hidden w-7 h-7 flex items-center justify-center rounded-lg transition-all border shadow-sm active:scale-95 shrink-0
                 ${isDark
                   ? 'text-subtext hover:text-white bg-white/5 hover:bg-white/10 border-white/10'
                   : 'text-slate-500 hover:text-primary bg-slate-100 hover:bg-slate-200 border-slate-200'}`}
             >
-              <X className="w-5 h-5" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
