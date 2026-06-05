@@ -24,8 +24,18 @@ import React, { useState, useCallback, useRef } from 'react';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const BASE_URL = window._env_?.VITE_AISA_BACKEND_API || import.meta.env.VITE_AISA_BACKEND_API || "http://localhost:8080/api";
+const BASE_URL = window._env_?.VITE_AISA_BACKEND_API || import.meta.env.VITE_AISA_BACKEND_API || "https://aisa24.com/api";
 const APPLE_PAY_MERCHANT_ID = import.meta.env.VITE_APPLE_PAY_MERCHANT_ID || 'merchant.com.aisa24.pay';
+
+// ⚠️ Safety check: Apple Pay REQUIRES HTTPS for both the page AND all API calls.
+// If BASE_URL is HTTP (e.g. stale cached env-config), log the error and block Apple Pay.
+if (BASE_URL.startsWith('http://')) {
+    console.error(
+        '[ApplePay] ❌ BASE_URL is insecure (HTTP). Apple Pay will be blocked.\n' +
+        'BASE_URL =', BASE_URL, '\n' +
+        'Fix: Ensure public/env-config.js uses https:// and redeploy.'
+    );
+}
 
 // ─── Helper: Auth Headers ────────────────────────────────────────────────────
 
@@ -40,14 +50,29 @@ function getAuthHeaders() {
 // ─── Helper: Check if Apple Pay is supported ─────────────────────────────────
 
 function isApplePaySupported() {
-    // Must be Safari + Apple Pay API available
+    // Apple Pay requires:
+    // 1. Safari browser (ApplePaySession exists)
+    // 2. HTTPS page (window.isSecureContext === true)
+    // 3. Apple Pay capability + version support
+    if (typeof window === 'undefined') return false;
+
+    // Block if page or API base URL is insecure (HTTP)
+    if (!window.isSecureContext) {
+        console.warn('[ApplePay] Page is not a secure context (HTTPS required). Apple Pay hidden.');
+        return false;
+    }
+    if (BASE_URL.startsWith('http://')) {
+        console.warn('[ApplePay] API BASE_URL is HTTP (not HTTPS). Apple Pay hidden to avoid insecure session error.');
+        return false;
+    }
+
     return (
-        typeof window !== 'undefined' &&
         window.ApplePaySession &&
         ApplePaySession.supportsVersion(3) &&
         ApplePaySession.canMakePayments()
     );
 }
+
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
