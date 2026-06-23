@@ -3,15 +3,21 @@ import { API } from "../types";
 
 const getAuthHeaders = () => {
   const userStr = localStorage.getItem("user");
-  let token = localStorage.getItem("auth_token") || localStorage.getItem("token");
-  if (!token && userStr) {
+  let token = null;
+  if (userStr && userStr !== "undefined" && userStr !== "null") {
     try {
       const userObj = JSON.parse(userStr);
-      token = userObj.token;
+      token = userObj?.token;
     } catch (e) {}
   }
+  if (!token || token === "undefined" || token === "null") {
+    token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+  }
+  if (!token || token === "undefined" || token === "null") {
+    token = "";
+  }
   return {
-    Authorization: `Bearer ${token}`,
+    Authorization: token ? `Bearer ${token}` : "",
   };
 };
 

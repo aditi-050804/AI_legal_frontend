@@ -5,7 +5,7 @@ import './Pricing.css';
 import { Check, X, ShieldAlert, Sparkles, Zap, Image as ImageIcon, Video, Search, Users, ChevronRight, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRecoilState } from 'recoil';
-import { userData, updateUser } from '../userStore/userData';
+import { userData, updateUser, getUserData } from '../userStore/userData';
 import { useLanguage } from '../context/LanguageContext';
 import GooglePayButton from '../Components/GooglePayButton';
 import ApplePayButton from '../Components/ApplePayButton';
@@ -59,9 +59,27 @@ const Pricing = () => {
     grid.scrollTo({ left: idx * (cardWidth + 12), behavior: 'smooth' });
   };
 
+  const getActiveToken = () => {
+    const userStr = localStorage.getItem("user");
+    let token = null;
+    if (userStr && userStr !== "undefined" && userStr !== "null") {
+      try {
+        const userObj = JSON.parse(userStr);
+        token = userObj?.token;
+      } catch (e) {}
+    }
+    if (!token || token === "undefined" || token === "null") {
+      token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+    }
+    if (!token || token === "undefined" || token === "null") {
+      token = "";
+    }
+    return token;
+  };
+
   const fetchCurrentPlan = async () => {
-    const user = localStorage.getItem('token') || localStorage.getItem('auth_token');
-    if (!user) {
+    const token = getActiveToken();
+    if (!token) {
       setCurrentPlanName('');
       return;
     }
@@ -79,7 +97,8 @@ const Pricing = () => {
         setCurrentPlanName('plan_0');
       }
     } catch (e) {
-      setCurrentPlanName('plan_0');
+      console.error('Failed to fetch current plan:', e);
+      setCurrentPlanName('');
     }
   };
 
@@ -106,7 +125,7 @@ const Pricing = () => {
 
   const renderQuotaSummary = (plan) => {
     const isFree = plan.priceMonthly === 0 && plan.priceYearly === 0;
-    
+
     if (isFree) {
       return [
         { text: `${plan.chatLimit || 100} total messages cap`, icon: <Zap size={14} /> },
@@ -137,8 +156,8 @@ const Pricing = () => {
   };
 
   const handleUpgrade = async (plan) => {
-    const user = localStorage.getItem('token') || localStorage.getItem('auth_token');
-    if (!user) {
+    const token = getActiveToken();
+    if (!token) {
       toast.error(t('pleaseLoginToUpgrade') || 'Please login to upgrade your plan');
       navigate('/login');
       return;
@@ -199,8 +218,8 @@ const Pricing = () => {
   };
 
   const handleBuyCredits = async (pkg) => {
-    const user = localStorage.getItem('token') || localStorage.getItem('auth_token');
-    if (!user) {
+    const token = getActiveToken();
+    if (!token) {
       toast.error(t('pleaseLoginToPurchaseCredits') || 'Please login to purchase credits');
       navigate('/login');
       return;
@@ -316,6 +335,24 @@ const Pricing = () => {
           }
           return <span className="flex items-center justify-center"><X size={20} className="cross-icon" /></span>;
 
+        case 'ai_legal':
+          if (!isFree) {
+            return <span className="flex items-center justify-center"><Check size={20} className="check-icon" /></span>;
+          }
+          return <span className="flex items-center justify-center"><X size={20} className="cross-icon" /></span>;
+
+        case 'ai_cashflow':
+          if (plan.cashflowAllowed) {
+            return <span className="flex items-center justify-center"><Check size={20} className="check-icon" /></span>;
+          }
+          return <span className="flex items-center justify-center"><X size={20} className="cross-icon" /></span>;
+
+        case 'ai_ads':
+          if (plan.carouselLimit > 0) {
+            return <span className="flex items-center justify-center"><Check size={20} className="check-icon" /></span>;
+          }
+          return <span className="flex items-center justify-center"><X size={20} className="cross-icon" /></span>;
+
         default:
           return null;
       }
@@ -331,7 +368,10 @@ const Pricing = () => {
       { feature: 'AISA Deep Search', key: 'deep_search' },
       { feature: 'AISA Code Writer', key: 'code_writer' },
       { feature: 'AISA Convert to Audio', key: 'convert_audio' },
-      { feature: 'AISA Convert Documents', key: 'convert_docs' }
+      { feature: 'AISA Convert Documents', key: 'convert_docs' },
+      { feature: 'AISA AI Legal™', key: 'ai_legal' },
+      { feature: 'AISA AI Cashflow™', key: 'ai_cashflow' },
+      { feature: 'AISA AI Ads', key: 'ai_ads' }
     ];
 
     return (
@@ -419,9 +459,9 @@ const Pricing = () => {
       {/* ── Mobile swipe hint ── */}
       {isTabletCarousel && (
         <div className="pricing-swipe-hint" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5l7 7-7 7"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5l7 7-7 7" /></svg>
           <span>Swipe to explore plans</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5l7 7-7 7"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5l7 7-7 7" /></svg>
         </div>
       )}
 
@@ -431,14 +471,13 @@ const Pricing = () => {
           const isFree = plan.priceMonthly === 0 && plan.priceYearly === 0;
           const isCurrentPlan = (() => {
             if (!currentPlanName) return false;
-            const pn = plan.planName.toLowerCase();
-            const pid = (plan.planId || '').toLowerCase();
-            const cName = currentPlanName.toLowerCase();
-            if (cName === 'startup pro' || cName === 'startup') return pn.includes('startup');
+            const pn = plan.planName.toLowerCase().trim();
+            const pid = (plan.planId || '').toLowerCase().trim();
+            const cName = currentPlanName.toLowerCase().trim();
+            if (cName === 'startup pro' || cName === 'startup' || cName === 'plan_2') return pn.includes('startup') || pid === 'plan_2' || pn.includes('pro');
             if (cName === 'free' || cName === 'free tier' || cName === 'plan_0') return isFree;
-            if (cName === 'plan_1') return pid === 'plan_1' || pn.includes('starter');
-            if (cName === 'plan_2') return pid === 'plan_2' || pn.includes('pro');
-            if (cName === 'plan_3') return pid === 'plan_3' || pn.includes('business');
+            if (cName === 'plan_1' || cName === 'creator' || cName === 'starter') return pid === 'plan_1' || pn.includes('starter') || pn.includes('creator');
+            if (cName === 'plan_3' || cName === 'business' || cName === 'enterprise') return pid === 'plan_3' || pn.includes('business') || pn.includes('enterprise');
             return pid === cName || pn.includes(cName) || cName.includes(pn.split(' ')[0]);
           })();
 
@@ -481,13 +520,13 @@ const Pricing = () => {
                     {billingCycle === 'yearly' ? (isFounder ? '/mo (lifetime)' : '/mo') : (isFounder ? '/mo (lifetime)' : '/mo')}
                   </span>
                 </div>
-                
+
                 {!isFree && (
                   <div className="validity-badge">
                     <ShieldAlert size={12} /> {t('validityLabel')} {displayValidity}
                   </div>
                 )}
-                
+
                 {billingCycle === 'yearly' && !isFree && (
                   <div className="billed-yearly-label">
                     {t('billedYearlyLabel')} ₹{totalYearlyAmount}{t('billedYearlySuffix')}

@@ -531,18 +531,19 @@ const Chat = () => {
 
     if (isPremiumUser === null) return true; // still loading, allow optimistically
 
-    // Lock Video features for Free users
-    if (['Generate Video', 'Image to Video', 'Image to Video Magic'].includes(toolName)) {
-      if (!isPremiumUser) {
-        window.dispatchEvent(new CustomEvent('premium_required', {
-          detail: {
-            toolName,
-            customMessage: `Video features are locked for free users. Please subscribe to an active plan to unlock Text-to-Video and Image-to-Video Magic Cards.`
-          }
-        }));
-        return false;
-      }
+    // Lock all tools for Free plan users
+    if (!isPremiumUser) {
+      window.dispatchEvent(new CustomEvent('premium_required', {
+        detail: {
+          toolName,
+          customMessage: `${toolName} is not available on the Free plan. Please upgrade to unlock all tools.`
+        }
+      }));
+      return false;
+    }
 
+    // Lock Video features for Starter/Pro users
+    if (['Generate Video', 'Image to Video', 'Image to Video Magic'].includes(toolName)) {
       const plan = (userPlanName || '').toLowerCase();
       if (plan.includes('starter') || plan.includes('pro') || plan.includes('founder')) {
         window.dispatchEvent(new CustomEvent('premium_required', {
@@ -555,7 +556,6 @@ const Chat = () => {
       }
     }
 
-    // All other tools (Image, Code, etc.) are available to free users using their 500 complimentary credits!
     return true;
   };
 
