@@ -550,6 +550,9 @@ const ArgumentBuilder = ({ currentCase, onBack, theme, allProjects = [], onUpdat
 
   const handleNewChat = async () => {
     if (!currentCase) return;
+    // Save current chat session to history before creating new chat
+    await saveChatHistory(messages);
+
     const caseName = currentCase.name || 'AISA Argument Builder';
     const newSessionId = 'sess_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
     const defaultMsgs = [
@@ -575,8 +578,8 @@ const ArgumentBuilder = ({ currentCase, onBack, theme, allProjects = [], onUpdat
     setMessages(defaultMsgs);
     setInputValue('');
     setAttachments([]);
-await saveChatHistory(messages);
 
+    // Persist the new session without overwriting its empty history
     try {
       const payload = {
         ...currentCase,
@@ -592,6 +595,7 @@ await saveChatHistory(messages);
       console.error("Failed to save new chat session", err);
     }
 
+    // Focus the input after a short delay
     setTimeout(() => {
       const chatInput = document.querySelector('input[placeholder="Describe case details or ask litigation questions..."]');
       if (chatInput) chatInput.focus();
