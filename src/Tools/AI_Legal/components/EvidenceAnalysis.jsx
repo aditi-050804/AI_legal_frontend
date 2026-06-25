@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   ChevronLeft, ChevronRight, Gavel, Plus, FileText, Copy, 
   Share2, FileDown, History, Search, X, Shield, Clock, 
@@ -11,6 +11,8 @@ import toast from 'react-hot-toast';
 import { generateChatResponse } from '../../../services/geminiService';
 import { apiService } from '../../../services/apiService';
 import { consumePrefillIntent, mapCaseToForm } from '../services/activeModuleService';
+import useOutputLanguage from '../hooks/useOutputLanguage';
+import LanguageToggle from './shared/LanguageToggle';
 
 const EVIDENCE_TYPES = [
   'CCTV Video', 'Mobile Video', 'Audio Recording', 'Call Recording', 
@@ -42,9 +44,198 @@ const EvidenceAnalysis = ({ currentCase, onBack, theme, allProjects = [], onUpda
   // Forensic Analysis States
   const [isAuditing, setIsAuditing] = useState(false);
   const [scanPhase, setScanPhase] = useState(''); // 'uploading' | 'analyzing' | 'generating' | ''
-  const [forensicResult, setForensicResult] = useState(null);
+  const [rawForensicResult, setRawForensicResult] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [activeTab, setActiveTab] = useState('report'); // 'report' | 'ocr' | 'integrity' | 'admissibility' | 'strength' | 'sections' | 'exhibit'
+
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  const {
+    outputLang,
+    setOutputLang,
+    isTranslating: isForensicTranslating,
+    setIsTranslating: setIsForensicTranslating,
+    translateText: translateForensicText,
+    getDisplayText: getForensicDisplayText,
+  } = useOutputLanguage('evidence_analysis', currentCase?._id || 'global');
+
+  const [translatedForensicResult, setTranslatedForensicResult] = useState(null);
+
+  const forensicResult = useMemo(() => {
+    if (outputLang === 'en' || !translatedForensicResult) return rawForensicResult;
+    return translatedForensicResult;
+  }, [outputLang, translatedForensicResult, rawForensicResult]);
+
+  const setForensicResult = useCallback((val) => {
+    if (typeof val === 'function') {
+      setRawForensicResult(prev => {
+        const computed = val(prev);
+        return computed;
+      });
+    } else {
+      setRawForensicResult(val);
+    }
+  }, []);
+
+  const buildForensicSummaryText = useCallback((result) => {
+    if (!result) return '';
+    const parts = [];
+    parts.push(`SUMMARY: ${result.summary || ''}`);
+    parts.push(`OCR_TEXT: ${result.ocrText || ''}`);
+    parts.push(`STRENGTH_EXPLANATION: ${result.strengthEngine?.explanation || ''}`);
+    
+    // Strengths
+    const strengthsStr = (result.findings?.strengths || []).join(' | ');
+    parts.push(`STRENGTHS: ${strengthsStr}`);
+    
+    // Weaknesses
+    const weaknessesStr = (result.findings?.weaknesses || []).join(' | ');
+    parts.push(`WEAKNESSES: ${weaknessesStr}`);
+    
+    // Key Findings
+    const keyFindingsStr = (result.findings?.keyFindings || []).join(' | ');
+    parts.push(`KEY_FINDINGS: ${keyFindingsStr}`);
+    
+    // Legal Observations
+    const legalObservationsStr = (result.findings?.legalObservations || []).join(' | ');
+    parts.push(`LEGAL_OBSERVATIONS: ${legalObservationsStr}`);
+    
+    // Admissibility reasons
+    const reasonsStr = (result.admissibilityReport?.reasons || []).join(' | ');
+    parts.push(`VERDICT_REASONS: ${reasonsStr}`);
+
+    // Missing evidence
+    const missingStr = (result.missingEvidence || []).join(' | ');
+    parts.push(`MISSING_EVIDENCE: ${missingStr}`);
+
+    // Contradictions
+    const contraStr = (result.contradictions || []).map(c => `${c.title}: ${c.explanation}`).join(' | ');
+    parts.push(`CONTRADICTIONS: ${contraStr}`);
+
+    // Legal Sections descriptions
+    const sectionsStr = (result.legalSections || []).map(s => `${s.section}: ${s.desc}`).join(' | ');
+    parts.push(`SECTIONS_DESC: ${sectionsStr}`);
+
+    return parts.join('\n\n');
+  }, []);
+
+  const parseTranslatedForensicSummary = (translated, original) => {
+    const lines = translated.split(/\n\n/);
+    const keys = [
+      'summary',
+      'ocrText',
+      'strengthExplanation',
+      'strengths',
+      'weaknesses',
+      'keyFindings',
+      'legalObservations',
+      'reasons',
+      'missingEvidence',
+      'contradictions',
+      'sectionsDesc'
+    ];
+    
+    const result = {};
+    keys.forEach((key, i) => {
+      const line = lines[i] || '';
+      const colonIdx = line.indexOf(':');
+      const content = colonIdx !== -1 ? line.slice(colonIdx + 1).trim() : line.trim();
+      result[key] = content;
+    });
+    
+    const getArray = (str) => str ? str.split(' | ').map(s => s.trim()).filter(Boolean) : [];
+    
+    const originalFindings = original.findings || {};
+    const originalAdmissibility = original.admissibilityReport || {};
+    const originalStrength = original.strengthEngine || {};
+    
+    const parsedResult = {
+      ...original,
+      summary: result.summary || original.summary,
+      ocrText: result.ocrText || original.ocrText,
+      findings: {
+        ...originalFindings,
+        strengths: getArray(result.strengths),
+        weaknesses: getArray(result.weaknesses),
+        keyFindings: getArray(result.keyFindings),
+        legalObservations: getArray(result.legalObservations),
+      },
+      admissibilityReport: {
+        ...originalAdmissibility,
+        reasons: getArray(result.reasons),
+      },
+      strengthEngine: {
+        ...originalStrength,
+        explanation: result.strengthExplanation || originalStrength.explanation,
+      },
+      missingEvidence: getArray(result.missingEvidence),
+    };
+    
+    if (result.contradictions && original.contradictions) {
+      const contraParts = result.contradictions.split(' | ');
+      parsedResult.contradictions = original.contradictions.map((origC, idx) => {
+        const part = contraParts[idx] || '';
+        const colonIdx = part.indexOf(':');
+        const translatedExplanation = colonIdx !== -1 ? part.slice(colonIdx + 1).trim() : part.trim();
+        return {
+          ...origC,
+          explanation: translatedExplanation || origC.explanation
+        };
+      });
+    }
+
+    if (result.sectionsDesc && original.legalSections) {
+      const secParts = result.sectionsDesc.split(' | ');
+      parsedResult.legalSections = original.legalSections.map((origS, idx) => {
+        const part = secParts[idx] || '';
+        const colonIdx = part.indexOf(':');
+        const translatedDesc = colonIdx !== -1 ? part.slice(colonIdx + 1).trim() : part.trim();
+        return {
+          ...origS,
+          desc: translatedDesc || origS.desc
+        };
+      });
+    }
+    
+    return parsedResult;
+  };
+
+  const handleForensicLangChange = useCallback(async (newLang) => {
+    setOutputLang(newLang);
+    if (!rawForensicResult) return;
+    if (newLang === 'en') {
+      setTranslatedForensicResult(null);
+      return;
+    }
+    const summary = buildForensicSummaryText(rawForensicResult);
+    const cached = getForensicDisplayText(summary);
+    if (cached && cached !== summary) {
+      setTranslatedForensicResult(parseTranslatedForensicSummary(cached, rawForensicResult));
+      return;
+    }
+    setIsForensicTranslating(true);
+    try {
+      const translated = await translateForensicText(summary);
+      if (isMountedRef.current) {
+        setTranslatedForensicResult(parseTranslatedForensicSummary(translated, rawForensicResult));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      if (isMountedRef.current) setIsForensicTranslating(false);
+    }
+  }, [rawForensicResult, buildForensicSummaryText, getForensicDisplayText, setOutputLang, setIsForensicTranslating, translateForensicText]);
+
+  useEffect(() => {
+    if (rawForensicResult) {
+      setTranslatedForensicResult(null);
+      setOutputLang('en');
+    }
+  }, [rawForensicResult]);
 
   // OCR Panel States
   const [ocrText, setOcrText] = useState('');
@@ -692,9 +883,12 @@ JSON Schema:
     const html = `
       <html>
       <head>
+        <meta charset="UTF-8"/>
+        <link rel="preconnect" href="https://fonts.googleapis.com"/>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,700;1,400&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet"/>
         <title>AISA Forensic Report - ${forensic.title}</title>
         <style>
-          body { font-family: 'Inter', system-ui, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; }
+          body { font-family: 'Noto Sans Devanagari', 'Noto Sans', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.8; }
           .header { text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 20px; margin-bottom: 30px; }
           .title { text-transform: uppercase; font-size: 20px; font-weight: 800; color: #1d4ed8; margin: 0; }
           .exhibit { display: inline-block; padding: 5px 15px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; font-weight: bold; border-radius: 8px; margin-top: 10px; }
@@ -1146,7 +1340,13 @@ JSON Schema:
                     </div>
 
                     {/* Actions bar */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      {/* Language Toggle */}
+                      <LanguageToggle
+                        lang={outputLang}
+                        onChange={handleForensicLangChange}
+                        isTranslating={isForensicTranslating}
+                      />
                       <button
                         onClick={() => handleCopyText(forensicResult.ocrText)}
                         className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-indigo-400' : 'hover:bg-slate-200 text-slate-500 hover:text-indigo-600'}`}

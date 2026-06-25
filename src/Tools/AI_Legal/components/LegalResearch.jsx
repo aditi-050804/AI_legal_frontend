@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   ChevronLeft, ChevronRight, Gavel, Plus, FileText, Copy, 
   Share2, FileDown, History, Search, X, Shield, Clock, 
@@ -9,6 +9,9 @@ import {
 import toast from 'react-hot-toast';
 import { generateChatResponse } from '../../../services/geminiService';
 import { apiService } from '../../../services/apiService';
+import useOutputLanguage from '../hooks/useOutputLanguage';
+import LanguageToggle from './shared/LanguageToggle';
+import CopyOutputButton from './shared/CopyOutputButton';
 
 const categories = [
   { id: 'SC', title: 'Supreme Court Research', icon: Landmark, count: '14,230 cases' },
@@ -27,6 +30,26 @@ const categories = [
 
 const LegalResearch = ({ currentCase, onBack, theme, allProjects = [], onUpdateCase }) => {
   const isDark = theme === 'dark';
+  const linkedCaseIdRef = useRef(currentCase?._id || '');
+
+  // ─ Language toggle ─
+  const {
+    outputLang,
+    setOutputLang,
+    isTranslating,
+    setIsTranslating,
+    getDisplayText,
+    translateText,
+  } = useOutputLanguage('legal_research', currentCase?._id || 'global');
+
+  const [researchDisplayText, setResearchDisplayText] = useState('');
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [detectedKeyword, setDetectedKeyword] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
@@ -284,6 +307,7 @@ const LegalResearch = ({ currentCase, onBack, theme, allProjects = [], onUpdateC
 
       setActiveResearch(newResearch);
       setResearchResult(newResearch);
+      setResearchDisplayText(responseText); // reset to English on new search
       await saveResearchToHistory(newResearch);
       toast.success("Precedents discovered!", { id: tid });
     } catch (e) {
@@ -344,6 +368,46 @@ const LegalResearch = ({ currentCase, onBack, theme, allProjects = [], onUpdateC
     toast.success("Report copied to clipboard!");
   };
 
+  // ─ Language switch handler ────────────────────────────────────────
+  const handleLangChange = useCallback(async (newLang) => {
+    setOutputLang(newLang);
+    const report = researchResult?.report;
+    if (!report) return;
+
+    if (newLang === 'en') {
+      setResearchDisplayText(report);
+      return;
+    }
+
+    const cached = getDisplayText(report);
+    if (cached && cached !== report) {
+      setResearchDisplayText(cached);
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const translated = await translateText(report);
+      if (isMountedRef.current) setResearchDisplayText(translated);
+    } catch {
+      if (isMountedRef.current) setResearchDisplayText(report);
+    } finally {
+      if (isMountedRef.current) setIsTranslating(false);
+    }
+  }, [researchResult, getDisplayText, setOutputLang, setIsTranslating, translateText]);
+
+  // Sync display text when researchResult changes (new research)
+  useEffect(() => {
+    if (researchResult?.report) {
+      if (outputLang === 'en') {
+        setResearchDisplayText(researchResult.report);
+      } else {
+        handleLangChange(outputLang);
+      }
+    }
+  }, [researchResult?.id]); // eslint-disable-line
+
+
   const handleShare = async (text) => {
     if (navigator.share) {
       try {
@@ -371,8 +435,11 @@ const LegalResearch = ({ currentCase, onBack, theme, allProjects = [], onUpdateC
     return `
       <html>
       <head>
+        <meta charset="UTF-8"/>
+        <link rel="preconnect" href="https://fonts.googleapis.com"/>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,700;1,400&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet"/>
         <style>
-          body { font-family: 'Times New Roman', serif; padding: 40px; line-height: 1.6; font-size: 13pt; color: #0f172a; }
+          body { font-family: 'Noto Sans Devanagari', 'Noto Sans', Arial, sans-serif; padding: 40px; line-height: 1.8; font-size: 13pt; color: #0f172a; }
           h1 { text-align: center; text-transform: uppercase; font-size: 16pt; font-weight: bold; margin-bottom: 24px; color: #4f46e5; border-bottom: 2px solid #4f46e5; padding-bottom: 10px; }
           h2 { font-size: 14pt; font-weight: bold; margin-top: 20px; margin-bottom: 12px; }
           h3 { font-size: 13pt; font-weight: bold; margin-top: 16px; margin-bottom: 8px; }
@@ -626,7 +693,7 @@ const LegalResearch = ({ currentCase, onBack, theme, allProjects = [], onUpdateC
                 </div>
                 
                 {/* Actions */}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
                   <button 
                     onClick={handleAttachCitations}
                     className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200/30 rounded-xl text-[10px] font-black uppercase tracking-wider"
@@ -635,29 +702,36 @@ const LegalResearch = ({ currentCase, onBack, theme, allProjects = [], onUpdateC
                     <Star size={12} fill="currentColor" />
                     <span>Attach to Case</span>
                   </button>
+
+                  {/* Language Toggle */}
+                  <LanguageToggle
+                    lang={outputLang}
+                    onChange={handleLangChange}
+                    isTranslating={isTranslating}
+                  />
+
+                  {/* Copy (language-aware) */}
+                  <CopyOutputButton
+                    text={researchDisplayText || researchResult.report}
+                    label={outputLang === 'hi' ? 'Hindi mein copy karein' : 'Copy report'}
+                  />
+
                   <button 
-                    onClick={() => handleCopy(researchResult.report)}
-                    className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-500 hover:text-indigo-600"
-                    title="Copy Report"
-                  >
-                    <Copy size={14} />
-                  </button>
-                  <button 
-                    onClick={() => handleShare(researchResult.report)}
+                    onClick={() => handleShare(researchDisplayText || researchResult.report)}
                     className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-500 hover:text-indigo-600"
                     title="Share Report"
                   >
                     <Share2 size={14} />
                   </button>
                   <button 
-                    onClick={() => handleSpeech(researchResult.report)}
+                    onClick={() => handleSpeech(researchDisplayText || researchResult.report)}
                     className={`p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg ${isSpeaking ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20' : 'text-slate-500'}`}
                     title="Speak Report"
                   >
                     <Mic size={14} />
                   </button>
                   <button 
-                    onClick={() => handleExportPDF(researchResult.report)}
+                    onClick={() => handleExportPDF(researchDisplayText || researchResult.report)}
                     className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-indigo-600 hover:text-indigo-700"
                     title="Print PDF"
                   >
@@ -666,8 +740,16 @@ const LegalResearch = ({ currentCase, onBack, theme, allProjects = [], onUpdateC
                 </div>
               </div>
 
-              <div className="prose dark:prose-invert max-w-none text-xs sm:text-sm whitespace-pre-wrap select-text leading-relaxed text-slate-800 dark:text-slate-200">
-                {researchResult.report}
+              {/* Translating indicator */}
+              {isTranslating && (
+                <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-500 animate-pulse">
+                  <span className="w-2.5 h-2.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  अनुवाद हो रहा है...
+                </div>
+              )}
+
+              <div className={`prose dark:prose-invert max-w-none text-xs sm:text-sm whitespace-pre-wrap select-text leading-relaxed text-slate-800 dark:text-slate-200 transition-opacity duration-200 ${isTranslating ? 'opacity-50' : 'opacity-100'}`}>
+                {researchDisplayText || researchResult.report}
               </div>
             </div>
           )}

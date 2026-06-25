@@ -620,7 +620,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
   return (
     <>
       <div className="flex-1 overflow-y-auto custom-scrollbar w-full">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-6 pb-20 space-y-6">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
           {/* Case Header */}
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-slate-200/60 dark:border-white/5 pb-5">
@@ -1094,7 +1094,7 @@ const LegalDashboard = ({
   // ─── Case Detail View ────────────────────────
   if (selectedCase) {
     return (
-      <div className="flex-1 flex flex-col w-full min-h-0 overflow-hidden bg-slate-50/30 dark:bg-transparent relative">
+      <div className="flex-1 flex flex-col w-full min-h-0 overflow-hidden bg-transparent relative">
         {/* Header */}
         <div className="w-full px-4 sm:px-6 md:px-10 pt-5 pb-4 flex items-center justify-between gap-4 shrink-0 border-b border-slate-200/60 dark:border-white/5 bg-slate-50/80 dark:bg-[#0B1020]/80 backdrop-blur-xl">
           <div className="flex items-center gap-3">
@@ -1124,7 +1124,7 @@ const LegalDashboard = ({
 
   // ─── Case List View ──────────────────────────
   return (
-    <div className="flex-1 flex flex-col w-full min-h-0 overflow-hidden aisa-scalable-text bg-slate-50/30 dark:bg-transparent relative">
+    <div className="flex-1 flex flex-col w-full min-h-0 overflow-hidden aisa-scalable-text bg-transparent relative">
       {/* Dashboard Header */}
       <div className="w-full px-4 sm:px-6 md:px-10 lg:px-12 pt-6 sm:pt-8 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 border-b border-slate-200/60 dark:border-white/5 bg-slate-50/80 dark:bg-[#0B1020]/80 backdrop-blur-xl">
         <div className="flex items-center gap-3 sm:gap-4">

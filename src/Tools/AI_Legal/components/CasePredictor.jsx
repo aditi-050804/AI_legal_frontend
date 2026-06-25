@@ -9,6 +9,8 @@ import toast from 'react-hot-toast';
 import { generateChatResponse } from '../../../services/geminiService';
 import { consumePrefillIntent, mapCaseToForm } from '../services/activeModuleService';
 import { apiService } from '../../../services/apiService';
+import useOutputLanguage from '../hooks/useOutputLanguage';
+import LanguageToggle from './shared/LanguageToggle';
 
 const QUICK_PRESETS = [
   { name: 'Bail Forecast', desc: 'Predict bail approval chances for financial disputes.' },
@@ -42,6 +44,62 @@ const CasePredictor = ({ currentCase, onBack, theme, allProjects = [], onUpdateC
   const [isEditingReport, setIsEditingReport] = useState(false);
   const [editedReportText, setEditedReportText] = useState('');
   const [reportSearchQuery, setReportSearchQuery] = useState('');
+
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  // ─── LANGUAGE TOGGLE STATE ────────────────────────────────────────
+  const {
+    outputLang,
+    setOutputLang,
+    isTranslating: isPredictorTranslating,
+    setIsTranslating: setIsPredictorTranslating,
+    translateText: translatePredictorText,
+    getDisplayText: getPredictorDisplayText,
+  } = useOutputLanguage('case_predictor', currentCase?._id || 'global');
+
+  const [translatedReportText, setTranslatedReportText] = useState('');
+
+  const originalReportText = useMemo(() => {
+    return displayPrediction?.reports?.[selectedReportTab] || displayPrediction?.report || '';
+  }, [displayPrediction, selectedReportTab]);
+
+  // Re-run translation whenever original report or language changes
+  useEffect(() => {
+    if (outputLang === 'en' || !originalReportText) {
+      setTranslatedReportText('');
+      return;
+    }
+    const cached = getPredictorDisplayText(originalReportText);
+    if (cached && cached !== originalReportText) {
+      setTranslatedReportText(cached);
+      return;
+    }
+    setIsPredictorTranslating(true);
+    translatePredictorText(originalReportText).then((translated) => {
+      if (isMountedRef.current) setTranslatedReportText(translated);
+      setIsPredictorTranslating(false);
+    }).catch(() => {
+      if (isMountedRef.current) setTranslatedReportText('');
+      setIsPredictorTranslating(false);
+    });
+  }, [originalReportText, outputLang, getPredictorDisplayText, translatePredictorText, setIsPredictorTranslating]);
+
+  // Reset output language when prediction changes
+  useEffect(() => {
+    if (displayPrediction) {
+      setOutputLang('en');
+      setTranslatedReportText('');
+    }
+  }, [displayPrediction]); // eslint-disable-line
+
+  const displayReportText = useMemo(() => {
+    if (outputLang === 'hi' && translatedReportText) return translatedReportText;
+    return editedReportText || originalReportText;
+  }, [outputLang, translatedReportText, editedReportText, originalReportText]);
 
   // Clean JSON block string helper
   const cleanJsonString = (str) => {
@@ -526,6 +584,8 @@ Ensure all report values in "reports" are long, detailed, professional legal bri
   // Switch between report tabs
   const handleReportTabChange = (tabId) => {
     setSelectedReportTab(tabId);
+    setOutputLang('en');
+    setTranslatedReportText('');
     if (activePrediction?.reports?.[tabId]) {
       setEditedReportText(activePrediction.reports[tabId]);
     } else {
@@ -567,7 +627,7 @@ Ensure all report values in "reports" are long, detailed, professional legal bri
     };
     
     const reportTitle = titles[selectedReportTab] || "Case Predictor Brief";
-    const reportContent = editedReportText || activePrediction.reports?.[selectedReportTab] || '';
+    const reportContent = displayReportText;
     
     const htmlContent = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -612,7 +672,7 @@ Ensure all report values in "reports" are long, detailed, professional legal bri
     };
     
     const reportTitle = titles[selectedReportTab] || "Case Predictor Brief";
-    const reportContent = editedReportText || activePrediction.reports?.[selectedReportTab] || '';
+    const reportContent = displayReportText;
 
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
@@ -645,7 +705,7 @@ Ensure all report values in "reports" are long, detailed, professional legal bri
 
   // Copy selected report text
   const handleCopyText = () => {
-    const reportContent = editedReportText || activePrediction?.reports?.[selectedReportTab] || '';
+    const reportContent = displayReportText;
     if (!reportContent) return;
     navigator.clipboard.writeText(reportContent);
     toast.success("Report brief copied to clipboard!");
@@ -1542,6 +1602,14 @@ Ensure all report values in "reports" are long, detailed, professional legal bri
                               <Edit3 size={14} />
                               <span>Edit Brief</span>
                             </button>
+                          )}
+
+                          {!isEditingReport && (
+                            <LanguageToggle
+                              lang={outputLang}
+                              onChange={setOutputLang}
+                              isTranslating={isPredictorTranslating}
+                            />
                           )}
 
                           <button 

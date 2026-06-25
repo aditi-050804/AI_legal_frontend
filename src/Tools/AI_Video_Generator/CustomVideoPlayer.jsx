@@ -182,7 +182,7 @@ const CustomVideoPlayer = ({ src, compact = false }) => {
             setShowControls(true);
             if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [isPlaying]);
 
     useEffect(() => {

@@ -495,7 +495,7 @@ const AiLegalContent = ({
   // --- Sub views ---
   if (activeModule === 'CASE_MANAGEMENT') {
     return (
-      <div className="flex-1 flex flex-col w-full h-full min-h-0 bg-slate-50 dark:bg-[#0B1020]/30 overflow-hidden relative">
+      <div className="flex-1 flex flex-col w-full h-full min-h-0 bg-transparent overflow-hidden relative">
         <LegalDashboard 
           legalCases={localCases}
           currentProjectId={currentCase?.id || currentCase?._id || null}
@@ -641,7 +641,7 @@ const AiLegalContent = ({
   }
 
   return (
-    <div className="flex-1 flex flex-col w-full min-h-0 overflow-y-auto custom-scrollbar bg-slate-50/40 dark:bg-transparent aisa-scalable-text">
+    <div className="flex-1 flex flex-col w-full min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-transparent aisa-scalable-text">
       {/* Welcome Tour Modal */}
       <AnimatePresence>
         {showTour && (
@@ -876,13 +876,13 @@ const AiLegalContent = ({
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-[2.5s] ease-in-out" />
             <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-4 w-full sm:w-auto">
-                <div className="w-14 h-14 bg-white/20 backdrop-blur-xl border border-white/25 rounded-2xl flex items-center justify-center shrink-0 shadow-lg">
+                <div className="w-14 h-14 bg-white/20 backdrop-blur-xl border border-white/25 rounded-2xl flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.3)]">
                   <MessageSquare size={28} className="text-white" />
                 </div>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-md text-[7px] sm:text-[8px] font-black uppercase tracking-widest">Enterprise Elite</span>
-                    <span className="flex items-center gap-1 text-[7px] sm:text-[8px] font-black text-emerald-400"><CheckCircle size={10} className="fill-current text-white" /> SECURE</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-md text-[7px] sm:text-[8px] font-black uppercase tracking-widest shrink-0">Enterprise Elite</span>
+                    <span className="flex items-center gap-1 text-[7px] sm:text-[8px] font-black text-emerald-400 shrink-0"><CheckCircle size={10} className="fill-current text-white" /> SECURE</span>
                   </div>
                   <h3 className="text-lg sm:text-xl font-black tracking-tight leading-tight">General Legal Chat</h3>
                   <p className="text-xs text-indigo-100 font-semibold leading-relaxed max-w-md">
@@ -943,18 +943,18 @@ const AiLegalContent = ({
                   >
                     <div>
                       {/* Badge / Accuracy */}
-                      <div className="flex items-center justify-between mb-4 shrink-0">
-                        <span className={`text-[8px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${badgeStyles}`}>
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-4 shrink-0">
+                        <span className={`text-[8px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${badgeStyles}`}>
                           {tool.badge}
                         </span>
-                        <div className="flex items-center gap-1 text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/10">
+                        <div className="flex items-center gap-1 text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/10 shrink-0">
                           <Zap size={11} className="fill-current animate-pulse text-emerald-500" />
                           <span>{tool.confidence}% Match</span>
                         </div>
                       </div>
 
                       {/* Icon Container */}
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-[#1e295d] dark:to-[#131c46] text-indigo-650 dark:text-indigo-400 border border-slate-100 dark:border-white/[0.05] flex items-center justify-center mb-4 transition-all duration-350 shadow-inner group-hover:from-indigo-600 group-hover:to-violet-600 group-hover:text-white group-hover:border-transparent group-hover:shadow-lg group-hover:shadow-indigo-500/30 group-hover:scale-105">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 dark:border-indigo-400/20 flex items-center justify-center mb-4 transition-all duration-350 shadow-[0_0_12px_rgba(99,102,241,0.25)] dark:shadow-[0_0_12px_rgba(99,102,241,0.2)] group-hover:from-indigo-600 group-hover:to-violet-600 group-hover:text-white group-hover:border-transparent group-hover:shadow-lg group-hover:shadow-indigo-500/30 group-hover:scale-105">
                         {tool.icon}
                       </div>
 

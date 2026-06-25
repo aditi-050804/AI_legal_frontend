@@ -11,6 +11,102 @@ import toast from 'react-hot-toast';
 import { generateChatResponse } from '../../../services/geminiService';
 import { apiService } from '../../../services/apiService';
 import BuildArgumentModal from './BuildArgumentModal';
+import useOutputLanguage from '../hooks/useOutputLanguage';
+import LanguageToggle from './shared/LanguageToggle';
+import CopyOutputButton from './shared/CopyOutputButton';
+import OutputActionToolbar from '../../../Components/OutputActionToolbar';
+
+// ─── PER-MESSAGE LANGUAGE TOGGLE WRAPPER ────────────────────────────────────
+const AiMessageWithLangToggle = ({ text, outputLang, getDisplayText, translateText, onLangChange }) => {
+  const [displayText, setDisplayText] = useState(text);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (outputLang === 'en') setDisplayText(text);
+  }, [text]); // eslint-disable-line
+
+  useEffect(() => {
+    if (outputLang === 'en') {
+      setDisplayText(text);
+      return;
+    }
+
+    const cached = getDisplayText(text);
+    if (cached && cached !== text) {
+      setDisplayText(cached);
+      return;
+    }
+
+    setIsTranslating(true);
+    translateText(text).then((translated) => {
+      if (isMountedRef.current) setDisplayText(translated);
+      setIsTranslating(false);
+    }).catch(() => {
+      if (isMountedRef.current) setDisplayText(text);
+      setIsTranslating(false);
+    });
+  }, [text, outputLang, getDisplayText, translateText]);
+
+  return (
+    <div className="relative">
+      <div className="flex items-center justify-end gap-1.5 mb-2 shrink-0">
+        <LanguageToggle
+          lang={outputLang}
+          onChange={onLangChange}
+          isTranslating={isTranslating}
+        />
+      </div>
+
+      {isTranslating && (
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-505 mb-2 animate-pulse">
+          <span className="w-2.5 h-2.5 border-2 border-indigo-505 border-t-transparent rounded-full animate-spin" />
+          अनुवाद हो रहा है...
+        </div>
+      )}
+
+      <div className={`transition-opacity duration-200 ${isTranslating ? 'opacity-50' : 'opacity-100'} prose dark:prose-invert max-w-none text-xs sm:text-sm whitespace-pre-wrap select-text`}>
+        {displayText}
+      </div>
+    </div>
+  );
+};
+
+// ─── PER-MESSAGE RESPONSE CARD WITH LOCALIZED ACTIONS ────────────────────────
+const AiResponseCard = ({ msg }) => {
+  const {
+    outputLang,
+    setOutputLang,
+    getDisplayText,
+    translateText,
+  } = useOutputLanguage('argument_builder_msg', msg.id);
+
+  return (
+    <>
+      <AiMessageWithLangToggle
+        text={msg.content}
+        outputLang={outputLang}
+        getDisplayText={getDisplayText}
+        translateText={translateText}
+        onLangChange={setOutputLang}
+      />
+      {msg.role !== 'user' && !msg.isSystemLog && (
+        <OutputActionToolbar
+          msg={msg}
+          outputLang={outputLang}
+          setOutputLang={setOutputLang}
+          getDisplayText={getDisplayText}
+          translateText={translateText}
+        />
+      )}
+    </>
+  );
+};
 
 const WORKFLOW_CATEGORIES = [
   {
@@ -77,6 +173,8 @@ const ArgumentBuilder = ({ currentCase, onBack, theme, allProjects = [], onUpdat
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [showBuildArgument, setShowBuildArgument] = useState(false);
   const [pinnedSessions, setPinnedSessions] = useState([]);
+
+
 
   // ─── HISTORY HANDLERS ────────────────────────────────────────────────────
   const handleTogglePin = async (sessId, e) => {
@@ -477,6 +575,7 @@ const ArgumentBuilder = ({ currentCase, onBack, theme, allProjects = [], onUpdat
     setMessages(defaultMsgs);
     setInputValue('');
     setAttachments([]);
+await saveChatHistory(messages);
 
     try {
       const payload = {
@@ -937,37 +1036,12 @@ Use professional Legal English.`;
                         ))}
                       </div>
                     )}
-                    <div className="prose dark:prose-invert max-w-none text-xs sm:text-sm whitespace-pre-wrap select-text">
-                      {msg.content}
-                    </div>
-                    {msg.role !== 'user' && !msg.isSystemLog && (
-                      <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-white/5">
-                        <button 
-                          onClick={() => {
-                            navigator.clipboard.writeText(msg.content);
-                            toast.success("Copied to clipboard");
-                          }}
-                          className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600"
-                        >
-                          <Copy size={12} />
-                          <span>Copy</span>
-                        </button>
-                        <button 
-                          onClick={() => {
-                            const blob = new Blob([msg.content], { type: 'text/markdown' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `courtroom_strategy_${Date.now()}.md`;
-                            a.click();
-                            URL.revokeObjectURL(url);
-                          }}
-                          className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600"
-                        >
-                          <FileDown size={12} />
-                          <span>Download</span>
-                        </button>
+                    {msg.role === 'user' || msg.isSystemLog ? (
+                      <div className="prose dark:prose-invert max-w-none text-xs sm:text-sm whitespace-pre-wrap select-text">
+                        {msg.content}
                       </div>
+                    ) : (
+                      <AiResponseCard msg={msg} />
                     )}
                   </div>
                 </div>

@@ -18,6 +18,9 @@ import DistrictSelect from './DistrictSelect';
 import PoliceStationSelect from './PoliceStationSelect';
 import SectionSelect from './SectionSelect';
 import { CRIMINAL_SECTIONS, getSuggestionKeywords } from '../data/criminalLawData';
+import useOutputLanguage from '../hooks/useOutputLanguage';
+import LanguageToggle from './shared/LanguageToggle';
+import CopyOutputButton from './shared/CopyOutputButton';
 
 // ── Country field definition (injected after every *address field) ────────────
 const COUNTRY_FIELD = {
@@ -333,7 +336,56 @@ const DraftMaker = ({ currentCase, onBack, theme, allProjects = [] }) => {
   const [exportHistory, setExportHistory] = useState([]);
   const [generationTimestamp, setGenerationTimestamp] = useState('');
 
-  // ── UI state ──
+  // ─ Language Toggle state ────────────────────────────────────────
+  const {
+    outputLang,
+    setOutputLang,
+    isTranslating: isDraftTranslating,
+    setIsTranslating: setIsDraftTranslating,
+    getDisplayText: getDraftDisplayText,
+    translateText: translateDraftText,
+  } = useOutputLanguage('draft_maker', currentCase?._id || 'global');
+  const [draftDisplayText, setDraftDisplayText] = useState('');
+  const draftMountedRef = useRef(true);
+  useEffect(() => { draftMountedRef.current = true; return () => { draftMountedRef.current = false; }; }, []);
+
+  // Reset display text when finalDraft changes
+  useEffect(() => {
+    if (finalDraft) {
+      if (outputLang === 'en') {
+        setDraftDisplayText(finalDraft);
+      } else {
+        handleDraftLangChange(outputLang);
+      }
+    } else {
+      setDraftDisplayText('');
+    }
+  }, [finalDraft]); // eslint-disable-line
+
+  const handleDraftLangChange = useCallback(async (newLang) => {
+    setOutputLang(newLang);
+    if (!finalDraft) return;
+    if (newLang === 'en') {
+      setDraftDisplayText(finalDraft);
+      return;
+    }
+    const cached = getDraftDisplayText(finalDraft);
+    if (cached && cached !== finalDraft) {
+      setDraftDisplayText(cached);
+      return;
+    }
+    setIsDraftTranslating(true);
+    try {
+      const translated = await translateDraftText(finalDraft);
+      if (draftMountedRef.current) setDraftDisplayText(translated);
+    } catch {
+      if (draftMountedRef.current) setDraftDisplayText(finalDraft);
+    } finally {
+      if (draftMountedRef.current) setIsDraftTranslating(false);
+    }
+  }, [finalDraft, getDraftDisplayText, setOutputLang, setIsDraftTranslating, translateDraftText]);
+
+  // ─ UI state ────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCat, setActiveCat] = useState('ALL');
   const [showVersionHistory, setShowVersionHistory] = useState(false);
@@ -350,7 +402,7 @@ const DraftMaker = ({ currentCase, onBack, theme, allProjects = [] }) => {
       if (caseId) setLinkedCaseId(caseId);
       toast.success(`✓ Case data ready — pick a template to auto-fill`, { icon: '💼', duration: 3500 });
     }
-  }, []); // eslint-disable-line
+  }, []);  
 
   // ── Filtered draft types ──
   const filteredCategories = useMemo(() => {
@@ -679,7 +731,8 @@ Generate the draft now:`;
 
   // ── Export: Print ──
   const handlePrint = () => {
-    const content = finalDraft
+    const textToPrint = draftDisplayText || finalDraft;
+    const content = textToPrint
       .replace(/^### (.*$)/gim, '<h3>$1</h3>')
       .replace(/^## (.*$)/gim, '<h2>$1</h2>')
       .replace(/^# (.*$)/gim, '<h1>$1</h1>')
@@ -688,9 +741,11 @@ Generate the draft now:`;
       .replace(/\n/g, '<br/>');
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+      <link rel="preconnect" href="https://fonts.googleapis.com"/>
+      <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,700;1,400&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet"/>
       <title>${selectedType || 'Legal Draft'}</title>
       <style>
-        body{font-family:'Times New Roman',serif;padding:40px;line-height:1.8;font-size:13pt;color:#000;max-width:800px;margin:0 auto}
+        body{font-family:'Noto Sans Devanagari','Noto Sans',Arial,sans-serif;padding:40px;line-height:1.9;font-size:13pt;color:#000;max-width:800px;margin:0 auto}
         h1{text-align:center;text-transform:uppercase;font-size:16pt;font-weight:bold;margin:20px 0;letter-spacing:1px}
         h2{font-size:14pt;font-weight:bold;margin:18px 0 10px;text-transform:uppercase}
         h3{font-size:13pt;font-weight:bold;margin:14px 0 8px}
@@ -720,8 +775,9 @@ Generate the draft now:`;
 
   // ── Export: DOCX (Word Format) ──
   const handleExportDOCX = () => {
-    if (!finalDraft) return;
-    const content = finalDraft
+    const textToExport = draftDisplayText || finalDraft;
+    if (!textToExport) return;
+    const content = textToExport
       .replace(/\n/g, '<p style="margin-top:0in;margin-right:0in;margin-bottom:6.0pt;margin-left:0in;line-height:150%"></p>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>');
@@ -764,7 +820,8 @@ Generate the draft now:`;
 
   // ── Export: Download TXT/MD ──
   const handleDownload = () => {
-    const blob = new Blob([finalDraft], { type: 'text/plain;charset=utf-8' });
+    const textToDownload = draftDisplayText || finalDraft;
+    const blob = new Blob([textToDownload], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -777,16 +834,18 @@ Generate the draft now:`;
 
   // ── Export: Copy ──
   const handleCopy = () => {
-    navigator.clipboard.writeText(finalDraft);
+    const textToCopy = draftDisplayText || finalDraft;
+    navigator.clipboard.writeText(textToCopy);
     addToExportHistory('Copy Text');
     toast.success('Draft copied to clipboard');
   };
 
   // ── Export: Share ──
   const handleShare = async () => {
+    const textToShare = draftDisplayText || finalDraft;
     if (navigator.share) {
       try {
-        await navigator.share({ title: selectedType || 'Legal Draft', text: finalDraft });
+        await navigator.share({ title: selectedType || 'Legal Draft', text: textToShare });
         addToExportHistory('Share Report');
       } catch (e) {
         handleCopy();
@@ -1458,7 +1517,18 @@ Generate the draft now:`;
                   <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">{selectedType}</span>
                   <span className="text-[9px] px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full font-bold">v{draftVersion}</span>
                 </div>
-                <span className="text-[9px] text-slate-400 font-medium">{finalDraft.length.toLocaleString()} chars</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] text-slate-400 font-medium">{finalDraft.length.toLocaleString()} chars</span>
+                  <LanguageToggle
+                    lang={outputLang}
+                    onChange={handleDraftLangChange}
+                    isTranslating={isDraftTranslating}
+                  />
+                  <CopyOutputButton
+                    text={draftDisplayText || finalDraft}
+                    label={outputLang === 'hi' ? 'Draft Hindi mein copy karein' : 'Copy draft'}
+                  />
+                </div>
               </div>
 
               {/* Metadata Output Panel */}
@@ -1473,6 +1543,13 @@ Generate the draft now:`;
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar" ref={previewRef}>
+                {/* Translating indicator */}
+                {isDraftTranslating && (
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-500 mb-3 animate-pulse">
+                    <span className="w-2.5 h-2.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    अनुवाद हो रहा है...
+                  </div>
+                )}
                 {isEditing ? (
                   <textarea
                     value={finalDraft}
@@ -1480,8 +1557,8 @@ Generate the draft now:`;
                     className="w-full h-full min-h-[500px] bg-transparent border-none text-slate-800 dark:text-slate-100 outline-none resize-none font-mono text-xs sm:text-sm leading-relaxed focus:ring-0"
                   />
                 ) : (
-                  <div className="prose dark:prose-invert max-w-none font-serif leading-loose text-slate-800 dark:text-slate-200 text-sm sm:text-base whitespace-pre-wrap select-text">
-                    {finalDraft}
+                  <div className={`prose dark:prose-invert max-w-none font-serif leading-loose text-slate-800 dark:text-slate-200 text-sm sm:text-base whitespace-pre-wrap select-text transition-opacity duration-200 ${isDraftTranslating ? 'opacity-50' : 'opacity-100'}`}>
+                    {draftDisplayText || finalDraft}
                   </div>
                 )}
               </div>

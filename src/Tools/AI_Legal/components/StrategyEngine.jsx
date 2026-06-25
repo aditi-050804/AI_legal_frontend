@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   ChevronLeft, ChevronRight, Gavel, Plus, FileText, Copy, 
   Share2, FileDown, History, Search, X, Shield, Clock, 
@@ -11,6 +11,9 @@ import { generateChatResponse } from '../../../services/geminiService';
 import { apiService } from '../../../services/apiService';
 import { consumePrefillIntent, mapCaseToForm } from '../services/activeModuleService';
 import { getUserData } from '../../../userStore/userData';
+import useOutputLanguage from '../hooks/useOutputLanguage';
+import LanguageToggle from './shared/LanguageToggle';
+import CopyOutputButton from './shared/CopyOutputButton';
 
 // Specialized litigation roadmap templates
 const allTools = [
@@ -56,6 +59,102 @@ const StrategyEngine = ({ currentCase, onBack, theme, allProjects = [], onUpdate
   const [newTaskText, setNewTaskText] = useState('');
 
   const scrollRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  // ─ Language Toggle ───────────────────────────────────────────
+  const {
+    outputLang,
+    setOutputLang,
+    isTranslating: isStrategyTranslating,
+    setIsTranslating: setIsStrategyTranslating,
+    translateText: translateStrategyText,
+    getDisplayText: getStrategyDisplayText,
+  } = useOutputLanguage('strategy_engine', currentCase?._id || 'global');
+
+  // Per-section display text state
+  const [strategyDisplayTexts, setStrategyDisplayTexts] = useState({});
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  const buildSummaryText = useCallback((result) => {
+    if (!result) return '';
+    const strats = result.strategies || {};
+    return [
+      `PRIMARY: ${strats.primary?.description || ''}`,
+      `ALTERNATIVE: ${strats.alternative?.description || ''}`,
+      `BACKUP: ${strats.backup?.description || ''}`,
+      `EMERGENCY: ${strats.emergency?.description || ''}`,
+      `OPINION: ${result.finalOpinion?.reasoning || ''}`,
+    ].join('\n\n');
+  }, []);
+
+  const parseTranslatedSummary = (translated, original) => {
+    const lines = translated.split(/\n\n/);
+    const keys = ['primary', 'alternative', 'backup', 'emergency', 'opinion'];
+    const result = {};
+    keys.forEach((key, i) => {
+      const line = lines[i] || '';
+      const colonIdx = line.indexOf(':');
+      result[key] = colonIdx !== -1 ? line.slice(colonIdx + 1).trim() : line.trim() || original[key] || '';
+    });
+    return result;
+  };
+
+  const handleStrategyLangChange = useCallback(async (newLang) => {
+    setOutputLang(newLang);
+    if (!strategyResult) return;
+    if (newLang === 'en') {
+      setStrategyDisplayTexts({});
+      return;
+    }
+    const summary = buildSummaryText(strategyResult);
+    const cached = getStrategyDisplayText(summary);
+    if (cached && cached !== summary) {
+      const originalTexts = {
+        primary: strategyResult.strategies?.primary?.description || '',
+        alternative: strategyResult.strategies?.alternative?.description || '',
+        backup: strategyResult.strategies?.backup?.description || '',
+        emergency: strategyResult.strategies?.emergency?.description || '',
+        opinion: strategyResult.finalOpinion?.reasoning || '',
+      };
+      setStrategyDisplayTexts(parseTranslatedSummary(cached, originalTexts));
+      return;
+    }
+    setIsStrategyTranslating(true);
+    try {
+      const translated = await translateStrategyText(summary);
+      if (!isMountedRef.current) return;
+      const originalTexts = {
+        primary: strategyResult.strategies?.primary?.description || '',
+        alternative: strategyResult.strategies?.alternative?.description || '',
+        backup: strategyResult.strategies?.backup?.description || '',
+        emergency: strategyResult.strategies?.emergency?.description || '',
+        opinion: strategyResult.finalOpinion?.reasoning || '',
+      };
+      setStrategyDisplayTexts(parseTranslatedSummary(translated, originalTexts));
+    } catch {
+      // stay original
+    } finally {
+      if (isMountedRef.current) setIsStrategyTranslating(false);
+    }
+  }, [strategyResult, buildSummaryText, getStrategyDisplayText, setOutputLang, setIsStrategyTranslating, translateStrategyText]);
+
+  // Helper: get translated text or fallback
+  const sText = useCallback((key, fallback) => {
+    if (outputLang === 'en' || !strategyDisplayTexts[key]) return fallback;
+    return strategyDisplayTexts[key];
+  }, [outputLang, strategyDisplayTexts]);
+
+  // Reset display on new result
+  useEffect(() => {
+    if (strategyResult) {
+      setStrategyDisplayTexts({});
+      setOutputLang('en');
+    }
+  }, [strategyResult]); // eslint-disable-line
 
   // --- Hydration & Setup ---
   useEffect(() => {
@@ -550,12 +649,22 @@ JSON Schema:
       return;
     }
 
+    const isHi = outputLang === 'hi';
+    const primaryStr = sText('primary', strategyResult.strategies?.primary?.description);
+    const alternativeStr = sText('alternative', strategyResult.strategies?.alternative?.description);
+    const backupStr = sText('backup', strategyResult.strategies?.backup?.description);
+    const emergencyStr = sText('emergency', strategyResult.strategies?.emergency?.description);
+    const opinionStr = sText('opinion', strategyResult.finalOpinion?.reasoning);
+
     const html = `
       <html>
       <head>
-        <title>AISA Litigation Strategy Report - ${caseTitle}</title>
+        <meta charset="UTF-8"/>
+        <link rel="preconnect" href="https://fonts.googleapis.com"/>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,700;1,400&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet"/>
+        <title>${isHi ? "AISA मुकदमा रणनीति रिपोर्ट" : "AISA Litigation Strategy Report"} - ${caseTitle}</title>
         <style>
-          body { font-family: 'Times New Roman', serif; padding: 45px; line-height: 1.5; color: #0f172a; }
+          body { font-family: 'Noto Sans Devanagari', 'Noto Sans', Arial, sans-serif; padding: 45px; line-height: 1.8; color: #0f172a; }
           .header { text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 15px; margin-bottom: 30px; }
           .title { text-transform: uppercase; font-size: 18pt; font-weight: bold; color: #4f46e5; margin: 0; }
           .meta-section { margin-bottom: 25px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
@@ -569,45 +678,47 @@ JSON Schema:
       </head>
       <body>
         <div class="header">
-          <div style="font-size: 9pt; font-weight: bold; letter-spacing: 2px; color: #4f46e5; margin-bottom: 5px;">AISA ENTERPRISE LITIGATION STRATEGY</div>
-          <h1 class="title">AI Courtroom Strategy & Exposure Report</h1>
-          <div style="margin-top: 5px; font-size: 11pt;">Matter: <strong>${caseTitle}</strong></div>
+          <div style="font-size: 9pt; font-weight: bold; letter-spacing: 2px; color: #4f46e5; margin-bottom: 5px;">${isHi ? "AISA उद्यम मुकदमेबाजी रणनीति" : "AISA ENTERPRISE LITIGATION STRATEGY"}</div>
+          <h1 class="title">${isHi ? "एआई कोर्टरूम रणनीति और प्रकटीकरण रिपोर्ट" : "AI Courtroom Strategy & Exposure Report"}</h1>
+          <div style="margin-top: 5px; font-size: 11pt;">${isHi ? "विषय" : "Matter"}: <strong>${caseTitle}</strong></div>
         </div>
 
         <div class="meta-section">
           <div class="meta-grid">
             <div>
-              <p><strong>Winning Probability:</strong> ${strategyResult.stats?.winningProbability}%</p>
-              <p><strong>Litigation Risk Score:</strong> ${strategyResult.stats?.litigationRisk}%</p>
-              <p><strong>Precedent Support:</strong> ${strategyResult.stats?.precedentSupport}%</p>
+              <p><strong>${isHi ? "जीतने की संभावना" : "Winning Probability"}:</strong> ${strategyResult.stats?.winningProbability}%</p>
+              <p><strong>${isHi ? "मुकदमेबाजी जोखिम स्कोर" : "Litigation Risk Score"}:</strong> ${strategyResult.stats?.litigationRisk}%</p>
+              <p><strong>${isHi ? "नजीर समर्थन" : "Precedent Support"}:</strong> ${strategyResult.stats?.precedentSupport}%</p>
             </div>
             <div>
-              <p><strong>Court Readiness Rating:</strong> ${strategyResult.stats?.courtReadiness}%</p>
-              <p><strong>AI Confidence Rate:</strong> ${strategyResult.stats?.aiConfidence}%</p>
-              <p><strong>Opponent Risk Status:</strong> ${strategyResult.stats?.opponentRiskLevel}</p>
+              <p><strong>${isHi ? "न्यायालय तत्परता रेटिंग" : "Court Readiness Rating"}:</strong> ${strategyResult.stats?.courtReadiness}%</p>
+              <p><strong>${isHi ? "एआई विश्वास दर" : "AI Confidence Rate"}:</strong> ${strategyResult.stats?.aiConfidence}%</p>
+              <p><strong>${isHi ? "विपक्ष जोखिम स्थिति" : "Opponent Risk Status"}:</strong> ${strategyResult.stats?.opponentRiskLevel}</p>
             </div>
           </div>
         </div>
 
-        <div class="section-title">1. Litigation Strategies Outline</div>
-        <p><strong>Primary strategy:</strong> ${strategyResult.strategies?.primary?.description}</p>
-        <p><strong>Alternative strategy:</strong> ${strategyResult.strategies?.alternative?.description}</p>
-        <p><strong>Backup Strategy:</strong> ${strategyResult.strategies?.backup?.description}</p>
+        <div class="section-title">${isHi ? "1. मुकदमेबाजी रणनीतियों की रूपरेखा" : "1. Litigation Strategies Outline"}</div>
+        <p><strong>${isHi ? "प्राथमिक रणनीति" : "Primary strategy"}:</strong> ${primaryStr}</p>
+        <p><strong>${isHi ? "वैकल्पिक रणनीति" : "Alternative strategy"}:</strong> ${alternativeStr}</p>
+        <p><strong>${isHi ? "बैकअप रणनीति" : "Backup Strategy"}:</strong> ${backupStr}</p>
+        <p><strong>${isHi ? "आपातकालीन रणनीति" : "Emergency Strategy"}:</strong> ${emergencyStr}</p>
+        <p><strong>${isHi ? "अंतिम कानूनी राय" : "Final Legal Opinion"}:</strong> ${opinionStr}</p>
 
-        <div class="section-title">2. Winning Roadmap timeline</div>
+        <div class="section-title">${isHi ? "2. जीतने की समयसीमा रोडमैप" : "2. Winning Roadmap timeline"}</div>
         <ul>
           ${strategyResult.winningRoadmap?.map(t => `
             <li style="margin-bottom: 8px;"><strong>${t.stage}:</strong> ${t.description} (Status: ${t.status})</li>
           `).join('') || '<li>None</li>'}
         </ul>
 
-        <div class="section-title">3. Admissible Evidence Strategy</div>
-        <p><strong>Strongest Evidence:</strong></p>
+        <div class="section-title">${isHi ? "3. स्वीकार्य साक्ष्य रणनीति" : "3. Admissible Evidence Strategy"}</div>
+        <p><strong>${isHi ? "सबसे मजबूत साक्ष्य" : "Strongest Evidence"}:</strong></p>
         <ul>${strategyResult.evidenceStrategy?.strong?.map(e => `<li>${e.evidence}: ${e.reason}</li>`).join('') || '<li>None</li>'}</ul>
-        <p><strong>Missing Key Evidence:</strong></p>
+        <p><strong>${isHi ? "लापता मुख्य साक्ष्य" : "Missing Key Evidence"}:</strong></p>
         <ul>${strategyResult.evidenceStrategy?.missing?.map(e => `<li>${e.evidence}: ${e.reason}</li>`).join('') || '<li>None</li>'}</ul>
 
-        <div class="section-title">4. Judicial Precedents & Citations</div>
+        <div class="section-title">${isHi ? "4. न्यायिक मिसालें और उद्धरण" : "4. Judicial Precedents & Citations"}</div>
         <ul>
           ${strategyResult.precedents?.map(p => `
             <li style="margin-bottom: 10px;">
@@ -618,7 +729,7 @@ JSON Schema:
         </ul>
 
         <div class="footer">
-          Generated automatically by AISA Litigation Strategy Platform on ${new Date().toLocaleString()}
+          ${isHi ? `AISA मुकदमेबाजी रणनीति प्लेटफॉर्म द्वारा स्वचालित रूप से उत्पन्न - ${new Date().toLocaleString()}` : `Generated automatically by AISA Litigation Strategy Platform on ${new Date().toLocaleString()}`}
           <br/>Authentic case counsel records copy.
         </div>
       </body>
@@ -636,67 +747,75 @@ JSON Schema:
 
   const handleExportDoc = () => {
     if (!strategyResult) return;
+    const isHi = outputLang === 'hi';
+    const primaryStr = sText('primary', strategyResult.strategies?.primary?.description);
+    const alternativeStr = sText('alternative', strategyResult.strategies?.alternative?.description);
+    const backupStr = sText('backup', strategyResult.strategies?.backup?.description);
+    const emergencyStr = sText('emergency', strategyResult.strategies?.emergency?.description);
+    const opinionStr = sText('opinion', strategyResult.finalOpinion?.reasoning);
+
     const docContent = `
-AISA LITIGATION STRATEGY PLATFORM REPORT
+${isHi ? "AISA मुकदमेबाजी रणनीति प्लेटफार्म रिपोर्ट" : "AISA LITIGATION STRATEGY PLATFORM REPORT"}
 ========================================
 
-Matter: ${caseTitle}
-Simulated Date: ${new Date().toLocaleDateString()}
-Winning Probability: ${strategyResult.stats?.winningProbability}%
-Litigation Risk Score: ${strategyResult.stats?.litigationRisk}%
-Precedent Support: ${strategyResult.stats?.precedentSupport}%
-Overall Readiness Score: ${readinessMetrics.overall}%
+${isHi ? "विषय" : "Matter"}: ${caseTitle}
+${isHi ? "सिम्युलेटेड दिनांक" : "Simulated Date"}: ${new Date().toLocaleDateString()}
+${isHi ? "जीतने की संभावना" : "Winning Probability"}: ${strategyResult.stats?.winningProbability}%
+${isHi ? "मुकदमेबाजी जोखिम स्कोर" : "Litigation Risk Score"}: ${strategyResult.stats?.litigationRisk}%
+${isHi ? "नजीर समर्थन" : "Precedent Support"}: ${strategyResult.stats?.precedentSupport}%
+${isHi ? "समग्र तत्परता स्कोर" : "Overall Readiness Score"}: ${readinessMetrics.overall}%
 
-STRATEGIC BRIEF:
+${isHi ? "रणनीतिक संक्षिप्त विवरण:" : "STRATEGIC BRIEF:"}
 ----------------
-- Primary Defense: ${strategyResult.strategies?.primary?.description}
-- Alternative Defense: ${strategyResult.strategies?.alternative?.description}
-- Backup Strategy: ${strategyResult.strategies?.backup?.description}
-- Emergency Action: ${strategyResult.strategies?.emergency?.description}
+- ${isHi ? "प्राथमिक बचाव" : "Primary Defense"}: ${primaryStr}
+- ${isHi ? "वैकल्पिक बचाव" : "Alternative Defense"}: ${alternativeStr}
+- ${isHi ? "बैकअप रणनीति" : "Backup Strategy"}: ${backupStr}
+- ${isHi ? "आपातकालीन कार्रवाई" : "Emergency Action"}: ${emergencyStr}
+- ${isHi ? "अंतिम राय" : "Final Opinion"}: ${opinionStr}
 
-COURTROOM MILESTONES ROADMAP:
+${isHi ? "न्यायालय मील के पत्थर रोडमैप:" : "COURTROOM MILESTONES ROADMAP:"}
 -----------------------------
 ${strategyResult.winningRoadmap?.map((t, idx) => `${idx + 1}. ${t.stage} [${t.status}]: ${t.description}`).join('\n')}
 
-EVIDENCE & CUSTODY STRATEGY:
+${isHi ? "साक्ष्य और अभिरक्षा रणनीति:" : "EVIDENCE & CUSTODY STRATEGY:"}
 ----------------------------
-Strong Elements:
+${isHi ? "मजबूत तत्व" : "Strong Elements"}:
 ${strategyResult.evidenceStrategy?.strong?.map(e => `* ${e.evidence} - ${e.reason}`).join('\n')}
-Missing Elements:
+${isHi ? "लापता तत्व" : "Missing Elements"}:
 ${strategyResult.evidenceStrategy?.missing?.map(e => `* ${e.evidence} - ${e.reason}`).join('\n')}
-Priority sequencing:
+${isHi ? "प्राथमिकता अनुक्रमण" : "Priority sequencing"}:
 ${strategyResult.evidenceStrategy?.sequence?.map((s, i) => `  Phase ${i + 1}: ${s}`).join('\n')}
 
-WITNESS CROSS EXAMINATION PREPARATION:
+${isHi ? "गवाह जिरह की तैयारी:" : "WITNESS CROSS EXAMINATION PREPARATION:"}
 -------------------------------------
-Key Witness:
+${isHi ? "मुख्य गवाह" : "Key Witness"}:
 ${strategyResult.witnessStrategy?.key?.map(w => `* ${w.witness}: ${w.purpose}`).join('\n')}
-Hostile Cross Trap Questions:
+${isHi ? "विपक्षी जिरह जाल प्रश्न" : "Hostile Cross Trap Questions"}:
 ${strategyResult.witnessStrategy?.crossExamination?.map(x => `
-Topic: ${x.topic}
-  Main: ${x.questions?.join(', ')}
-  Traps: ${x.traps?.join(', ')}
+${isHi ? "विषय" : "Topic"}: ${x.topic}
+  ${isHi ? "मुख्य" : "Main"}: ${x.questions?.join(', ')}
+  ${isHi ? "जाल" : "Traps"}: ${x.traps?.join(', ')}
 `).join('\n')}
 
-OPPONENT DEFENSE ANALYSIS:
+${isHi ? "विपक्ष बचाव विश्लेषण:" : "OPPONENT DEFENSE ANALYSIS:"}
 --------------------------
-- Expected Defense: ${strategyResult.opponentStrategy?.likelyDefence}
-- Anticipated Objections: ${strategyResult.opponentStrategy?.likelyObjections?.join(', ')}
-- Delay tactics expected: ${strategyResult.opponentStrategy?.delayStrategy}
+- ${isHi ? "अपेक्षित बचाव" : "Expected Defense"}: ${strategyResult.opponentStrategy?.likelyDefence}
+- ${isHi ? "प्रत्याशित आपत्तियां" : "Anticipated Objections"}: ${strategyResult.opponentStrategy?.likelyObjections?.join(', ')}
+- ${isHi ? "अपेक्षित देरी रणनीति" : "Delay tactics expected"}: ${strategyResult.opponentStrategy?.delayStrategy}
 
-STATUTORY LEGISLATIVE ENGINES (BNS/CPC):
+${isHi ? "वैधानिक विधायी इंजन" : "STATUTORY LEGISLATIVE ENGINES (BNS/CPC)"}:
 ----------------------------------------
 ${strategyResult.laws?.map(l => `- Section ${l.section} under ${l.act}: ${l.applicability}`).join('\n')}
 
-BINDING JUDICIAL CITATIONS:
+${isHi ? "बाध्यकारी न्यायिक उद्धरण" : "BINDING JUDICIAL CITATIONS"}:
 ---------------------------
 ${strategyResult.precedents?.map(p => `- [${p.similarityScore}% matches] ${p.citation} (${p.court}): ${p.summary}`).join('\n')}
 
-PROCEDURAL TASKS CHECKLIST:
+${isHi ? "प्रक्रियात्मक कार्य चेकलिस्ट" : "PROCEDURAL TASKS CHECKLIST"}:
 ---------------------------
 ${tasks.map(t => `- [${t.completed ? 'x' : ' '}] ${t.task}`).join('\n')}
 
-Generated by AISA AI Litigation Strategy Suite. Confidential record.
+${isHi ? "AISA एआई मुकदमेबाजी रणनीति सूट द्वारा उत्पन्न। गोपनीय रिकॉर्ड।" : "Generated by AISA AI Litigation Strategy Suite. Confidential record."}
 `;
 
     const blob = new Blob([docContent], { type: 'application/msword' });
@@ -1062,14 +1181,14 @@ Do NOT write conversational text outside the "json" code block. Double quote key
                   </div>
 
                   {/* Actions bar */}
-                  <div className="flex items-center gap-1 shrink-0 ml-4">
-                    <button 
-                      onClick={handleCopyReport}
-                      className={`p-2 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors ${isDark ? 'hover:bg-zinc-800' : 'hover:bg-slate-100'}`}
-                      title="Copy Strategy Report"
-                    >
-                      <Copy size={14} />
-                    </button>
+                  <div className="flex items-center gap-1 shrink-0 ml-2 flex-wrap justify-end">
+                    {/* Language Toggle */}
+                    <LanguageToggle
+                      lang={outputLang}
+                      onChange={handleStrategyLangChange}
+                      isTranslating={isStrategyTranslating}
+                    />
+
                     <button 
                       onClick={handleShareReport}
                       className={`p-2 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors ${isDark ? 'hover:bg-zinc-800' : 'hover:bg-slate-100'}`}
@@ -1107,7 +1226,14 @@ Do NOT write conversational text outside the "json" code block. Double quote key
                   {/* Overview Panel */}
                   {activeTab === 'overview' && (
                     <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Translating indicator */}
+                      {isStrategyTranslating && (
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-500 animate-pulse">
+                          <span className="w-2.5 h-2.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                          अनुवाद हो रहा है...
+                        </div>
+                      )}
+                      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity duration-200 ${isStrategyTranslating ? 'opacity-50' : 'opacity-100'}`}>
                         {[
                           { key: 'primary', label: 'Primary Legal Strategy', color: 'border-indigo-500/20 bg-indigo-500/5 text-indigo-500' },
                           { key: 'alternative', label: 'Alternative Legal Strategy', color: 'border-violet-500/20 bg-violet-500/5 text-violet-500' },
@@ -1120,7 +1246,7 @@ Do NOT write conversational text outside the "json" code block. Double quote key
                               <h4 className="text-xs font-black uppercase tracking-wider">{s.label}</h4>
                             </div>
                             <p className="text-xs font-bold text-slate-700 dark:text-slate-250 leading-relaxed">
-                              {strategyResult.strategies?.[s.key]?.description || 'Litigation defense parameter not compiled.'}
+                              {sText(s.key, strategyResult.strategies?.[s.key]?.description || 'Litigation defense parameter not compiled.')}
                             </p>
                           </div>
                         ))}
@@ -1134,7 +1260,7 @@ Do NOT write conversational text outside the "json" code block. Double quote key
                           <CheckCircle2 size={20} className="text-emerald-500 shrink-0 mt-0.5" />
                           <div className="space-y-1 text-xs">
                             <span className="font-black text-emerald-500 uppercase tracking-wider">Litigation Suitability</span>
-                            <p className="font-semibold text-slate-600 dark:text-slate-350 leading-normal">{strategyResult.finalOpinion?.reasoning}</p>
+                            <p className="font-semibold text-slate-600 dark:text-slate-350 leading-normal">{sText('opinion', strategyResult.finalOpinion?.reasoning)}</p>
                           </div>
                         </div>
                       </div>
