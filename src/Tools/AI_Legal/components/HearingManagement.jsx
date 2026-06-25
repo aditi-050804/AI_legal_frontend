@@ -9,6 +9,7 @@ import {
 import toast from 'react-hot-toast';
 import { Dialog, Transition } from '@headlessui/react';
 import { legalService } from '../services/legalService';
+import AIOutputCard from './shared/AIOutputCard';
 
 const getCaseContext = (hearing) => {
   if (!hearing) return null;
@@ -1071,10 +1072,22 @@ const HearingManagement = ({ onBack, isDark, theme }) => {
 
                     {/* AI summary */}
                     <div className="p-4 bg-slate-50 dark:bg-zinc-800/10 rounded-2xl space-y-2">
-                      <h5 className="text-[10px] font-black uppercase tracking-wider text-slate-800 dark:text-white">AI CASE SUMMARY</h5>
-                      <p className="text-xs text-subtext font-semibold leading-relaxed whitespace-pre-line">
-                        {selectedHearing.summary || generateCaseSummary(selectedHearing)}
-                      </p>
+                      <AIOutputCard
+                        originalText={selectedHearing.summary || generateCaseSummary(selectedHearing)}
+                        moduleId="hearing_management"
+                        sessionId={selectedHearing.id || selectedHearing._id || 'global'}
+                        headerLeft={
+                          <h5 className="text-[10px] font-black uppercase tracking-wider text-slate-800 dark:text-white">
+                            AI Case Summary
+                          </h5>
+                        }
+                      >
+                        {({ displayText }) => (
+                          <p className="text-xs text-subtext font-semibold leading-relaxed whitespace-pre-line mt-2">
+                            {displayText}
+                          </p>
+                        )}
+                      </AIOutputCard>
                     </div>
 
                     {/* Documents attachment */}

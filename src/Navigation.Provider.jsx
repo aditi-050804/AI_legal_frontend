@@ -186,7 +186,7 @@ const useScrollNavbar = () => {
     // NOTE: No `visible` in deps — visibleRef keeps the handler fresh without re-registration
     window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
     return () => window.removeEventListener("scroll", handleScroll, { capture: true, passive: true });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
 
   return visible;
 };

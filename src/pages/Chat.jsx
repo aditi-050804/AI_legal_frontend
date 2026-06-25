@@ -71,7 +71,7 @@ import AISnapshot from '../landingpage/AISnapshot';
 import ShareModal from '../Components/ShareModal';
 import ProfileSettingsDropdown from '../Components/ProfileSettingsDropdown/ProfileSettingsDropdown.jsx';
 import GlobalFloatingNavbar from '../Components/GlobalFloatingNavbar.jsx';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, useIsDark } from '../context/ThemeContext';
 
 // AI Legal Modular Components
 import ActionCard from '../Components/ActionCard';
@@ -649,9 +649,11 @@ const Chat = () => {
   const location = useLocation();
   const { personalizations, getSystemPromptExtensions, updatePersonalization } = usePersonalization();
   const { language: currentLang, toolkitLanguage, t } = useLanguage();
-  const isDarkMode = personalizations?.general?.theme === 'Dark' ||
-    (personalizations?.general?.theme !== 'Light' &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches);
+  // Use the DOM-based dark mode hook — ThemeContext already applies the correct
+  // 'dark' or 'light' class to <html> based on user settings + system preference.
+  // This is the most reliable single source of truth.
+  const isDarkMode = useIsDark();
+  const effectiveDarkMode = isDarkMode;
 
   const [messages, setMessages] = useChatMessages(sessionId || 'new');
   const [suggestions, setSuggestions] = useState([]);
@@ -929,7 +931,7 @@ const Chat = () => {
   const [activeTool, setActiveTool] = useState(null);
   const [unlockedTools, setUnlockedTools] = useState([]);
   const [selectedLegalTool, setSelectedLegalTool] = useRecoilState(activeLegalToolData);
-  const excludedFloatingNavTools = ['legal_my_case', 'legal_precedents', 'legal-precedents', 'my-case', 'legal_precedents_search'];
+  const excludedFloatingNavTools = ['legal_my_case', 'legal_precedents', 'legal-precedents', 'my-case', 'legal_precedents_search', 'legal_general_chat', 'legal_free_chat'];
   const showFloatingNavbar = currentMode === 'LEGAL_TOOLKIT' &&
     selectedLegalTool?.id &&
     !excludedFloatingNavTools.includes(selectedLegalTool.id) &&
@@ -1221,7 +1223,7 @@ const Chat = () => {
               setLegalView('DASHBOARD');
               navigate('/dashboard/cases', { replace: true });
             },
-            theme: isDarkMode ? 'dark' : 'light',
+            theme: effectiveDarkMode ? 'dark' : 'light',
             allProjects,
             onUpdateCase: (updated) => {
               setCurrentCase(updated);
@@ -6798,8 +6800,8 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
         <div
           ref={chatContainerRef}
           onScroll={handleScroll}
-          className={`relative flex-1 aisa-scalable-text chatgpt-container z-20 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent ${((currentMode === 'LEGAL_TOOLKIT' && !showFloatingNavbar) || location.pathname === '/dashboard/cases') ? 'no-top-padding' : ''} ${(((legalView === 'DASHBOARD' || legalView === 'PRECEDENTS') && currentMode === 'LEGAL_TOOLKIT') || (selectedLegalTool?.id && selectedLegalTool.id !== 'legal_my_case'))
-            ? 'z-[30] h-full w-full overflow-hidden flex flex-col bg-slate-50 dark:bg-transparent min-h-0'
+          className={`relative flex-1 aisa-scalable-text chatgpt-container z-20 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent ${selectedLegalTool?.id === 'legal_general_chat' ? 'legal-chat-active' : ''} ${((currentMode === 'LEGAL_TOOLKIT' && !showFloatingNavbar) || location.pathname === '/dashboard/cases') ? 'no-top-padding' : ''} ${(((legalView === 'DASHBOARD' || legalView === 'PRECEDENTS') && currentMode === 'LEGAL_TOOLKIT') || (selectedLegalTool?.id && selectedLegalTool.id !== 'legal_my_case'))
+            ? 'z-[30] h-full w-full overflow-hidden flex flex-col bg-transparent min-h-0'
             : selectedLegalTool?.id === 'legal_general_chat' ? 'overflow-hidden flex flex-col min-h-0'
             : viewingDoc ? 'overflow-hidden' : `overflow-y-auto ${showFloatingNavbar ? 'pt-[72px] sm:mt-0 sm:pt-24' : (currentMode === 'LEGAL_TOOLKIT' || location.pathname === '/dashboard/cases' ? 'pt-4' : 'pt-[72px] sm:mt-0 sm:pt-[76px]')} lg:pt-6 pb-64 md:pb-72`
             }`}
@@ -8021,7 +8023,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
 
                 <div ref={messagesEndRef} />
                 {/* Spacer to allow scrolling past the fixed bottom input area */}
-                {!(selectedLegalTool?.id && selectedLegalTool.id !== 'legal_my_case') && (
+                {!(selectedLegalTool?.id && selectedLegalTool.id !== 'legal_my_case') && currentMode !== 'LEGAL_TOOLKIT' && (
                   <div className="h-64 md:h-72 shrink-0 pointer-events-none" />
                 )}
               </motion.div>

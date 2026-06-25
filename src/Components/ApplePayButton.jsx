@@ -24,16 +24,16 @@ import React, { useState, useCallback, useRef } from 'react';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const BASE_URL = window._env_?.VITE_AISA_BACKEND_API || import.meta.env.VITE_AISA_BACKEND_API || "https://aisa24.com/api";
+const BASE_URL = "https://aisa24.com/api"
 const APPLE_PAY_MERCHANT_ID = import.meta.env.VITE_APPLE_PAY_MERCHANT_ID || 'merchant.com.aisa24.pay';
 
 // ⚠️ Safety check: Apple Pay REQUIRES HTTPS for both the page AND all API calls.
 // If BASE_URL is HTTP (e.g. stale cached env-config), log the error and block Apple Pay.
-if (BASE_URL.startsWith('http://')) {
+if (BASE_URL.startsWith('https://')) {
     console.error(
         '[ApplePay] ❌ BASE_URL is insecure (HTTP). Apple Pay will be blocked.\n' +
         'BASE_URL =', BASE_URL, '\n' +
-        'Fix: Ensure public/env-config.js uses https:// and redeploy.'
+    'Fix: Ensure public/env-config.js uses https:// and redeploy.'
     );
 }
 

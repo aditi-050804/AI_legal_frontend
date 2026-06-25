@@ -11,11 +11,14 @@ import { generateChatResponse } from '../../../services/geminiService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { searchAndFilterCases, getFilterOptions } from '../data/caseDatabase';
-import { jsPDF } from 'jspdf';
 import toast from 'react-hot-toast';
 import { legalService } from '../services/legalService';
 import { apiService } from '../../../services/apiService';
 import { chatStorageService } from '../../../services/chatStorageService';
+import LanguageToggle from './shared/LanguageToggle';
+import CopyOutputButton from './shared/CopyOutputButton';
+import useOutputLanguage from '../hooks/useOutputLanguage';
+import { exportToPDF } from '../utils/exportToPDF';
 
 // ─── LEGAL SYSTEM INSTRUCTION (matches AISA-Mobile) ─────────────────────────
 const LEGAL_SYSTEM_INSTRUCTION = `You are the AISA AI General Legal Chat Assistant. You are an expert in law. If a user uploads an image, PDF, or document, perform OCR, analyze the content, and provide structured legal insights. For Images: Provide a Summary, Key points, and Legal observations. For PDFs/Docs: Provide an Overview, Issues, and Recommendations. Never say you cannot view files. IMPORTANT: You must reply in the exact same language as the user's prompt (e.g., if the user asks in Hindi, reply in Hindi). If the user asks you to translate the previous response "in Hindi" or "hindi me batao", translate the current context to Hindi without hesitation.`;
@@ -31,6 +34,274 @@ const safeFormatTime = (ts) => {
   } catch {
     return '';
   }
+};
+
+// ─── PER-MESSAGE LANGUAGE TOGGLE WRAPPER ────────────────────────────────────
+/**
+ * AiMessageWithLangToggle
+ * Renders one AI chat bubble with language toggle + copy button driven by global parent state.
+ */
+const AiMessageWithLangToggle = ({ text, msgId, outputLang, getDisplayText, translateText, onLangChange }) => {
+  const [displayText, setDisplayText] = useState(text);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  // When original text changes (unlikely but safe), reset
+  useEffect(() => {
+    if (outputLang === 'en') setDisplayText(text);
+  }, [text]); // eslint-disable-line
+
+  useEffect(() => {
+    if (outputLang === 'en') {
+      setDisplayText(text);
+      return;
+    }
+
+    const cached = getDisplayText(text);
+    if (cached && cached !== text) {
+      setDisplayText(cached);
+      return;
+    }
+
+    setIsTranslating(true);
+    translateText(text).then((translated) => {
+      if (isMountedRef.current) setDisplayText(translated);
+      setIsTranslating(false);
+    }).catch(() => {
+      if (isMountedRef.current) setDisplayText(text);
+      setIsTranslating(false);
+    });
+  }, [text, outputLang, getDisplayText, translateText]);
+
+  return (
+    <div className="legal-msg-ai-text relative">
+      {/* Language Toggle bar */}
+      <div className="flex items-center justify-end gap-1.5 mb-2">
+        <LanguageToggle
+          lang={outputLang}
+          onChange={onLangChange}
+          isTranslating={isTranslating}
+        />
+      </div>
+
+      {/* Translating overlay */}
+      {isTranslating && (
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-500 mb-2 animate-pulse">
+          <span className="w-2.5 h-2.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          अनुवाद हो रहा है...
+        </div>
+      )}
+
+      {/* Content */}
+      <div id={`msg-content-${msgId}`} className={`transition-opacity duration-200 ${isTranslating ? 'opacity-50' : 'opacity-100'}`}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
+      </div>
+    </div>
+  );
+};
+
+// ─── PER-MESSAGE RESPONSE CARD WITH LOCALIZED ACTIONS ────────────────────────
+const AiResponseCard = ({ msg, currentCase, chatIdRef }) => {
+  const [copied, setCopied] = useState(false);
+  const [activeDownloadMenu, setActiveDownloadMenu] = useState(false);
+  const [activeShareMenu, setActiveShareMenu] = useState(false);
+
+  // Each response card has its own independent Hook instance and unique session key!
+  const {
+    outputLang,
+    setOutputLang,
+    getDisplayText,
+    translateText,
+  } = useOutputLanguage('legal_chat_msg', msg.id);
+
+  const handleCopyText = () => {
+    const resolvedText = getDisplayText(msg.text);
+    navigator.clipboard.writeText(resolvedText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success("Response copied to clipboard");
+  };
+
+  const handleExportPDF = async () => {
+    const resolvedText = getDisplayText(msg.text);
+    const isHi = outputLang === 'hi';
+    const toastId = toast.loading(isHi ? 'PDF तैयार किया जा रहा है...' : 'Generating PDF...');
+    try {
+      const el = document.getElementById(`msg-content-${msg.id}`);
+      await exportToPDF({
+        element: el,
+        text: resolvedText,
+        title: isHi ? 'AISA एआई कानूनी चैट रिपोर्ट' : 'AISA AI Legal Chat Report',
+        filename: 'Legal_Chat_Report',
+        lang: outputLang,
+        meta: {
+          [isHi ? 'संदर्भ आईडी' : 'Reference ID']: chatIdRef.current.toUpperCase(),
+          [isHi ? 'उत्पन्न तिथि' : 'Date Generated']: new Date().toLocaleString(),
+        },
+      });
+      toast.success(isHi ? 'PDF सफलतापूर्वक निर्यात किया गया' : 'PDF exported successfully', { id: toastId });
+    } catch (e) {
+      console.error(e);
+      toast.error(isHi ? 'PDF निर्यात विफल' : 'Failed to export PDF', { id: toastId });
+    }
+  };
+
+  const handleDownloadTxt = () => {
+    const resolvedText = getDisplayText(msg.text);
+    try {
+      const blob = new Blob([resolvedText], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Legal_Report_${Date.now()}.txt`;
+      a.click();
+      toast.success("Downloaded as TXT");
+    } catch (e) {
+      toast.error("Failed to download");
+    }
+  };
+
+  const handleDownloadDoc = () => {
+    const resolvedText = getDisplayText(msg.text);
+    try {
+      const blob = new Blob([resolvedText], { type: 'application/msword;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Legal_Report_${Date.now()}.doc`;
+      a.click();
+      toast.success("Downloaded as DOCX");
+    } catch (e) {
+      toast.error("Failed to download");
+    }
+  };
+
+  const handleShareEmail = () => {
+    const resolvedText = getDisplayText(msg.text);
+    const isHi = outputLang === 'hi';
+    window.open(`mailto:?subject=${encodeURIComponent(isHi ? "एआई कानूनी अनुसंधान रिपोर्ट" : "AI Legal Research Report")}&body=${encodeURIComponent(resolvedText.slice(0, 2000) + '\n\n...[Report Truncated]')}`);
+  };
+
+  const handleShareLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success("Share link copied to clipboard");
+  };
+
+  const handlePrint = () => {
+    const resolvedText = getDisplayText(msg.text);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error("Popup blocked! Please allow popups to print.");
+      return;
+    }
+    const isHi = outputLang === 'hi';
+    const cleanHtml = `
+      <html>
+      <head>
+        <title>${isHi ? "AISA कानूनी रिपोर्ट" : "AISA Legal Report"}</title>
+        <style>
+          body { font-family: 'Times New Roman', serif; padding: 40px; line-height: 1.6; color: #111; }
+          h1 { text-align: center; font-size: 22px; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 20px; }
+          .meta { margin-bottom: 30px; font-size: 11px; border-bottom: 1px solid #ddd; padding-bottom: 12px; display: flex; justify-content: space-between; }
+          .content { font-size: 13.5px; white-space: pre-wrap; text-align: justify; }
+        </style>
+      </head>
+      <body>
+        <h1>${isHi ? "AISA कोर्ट-रेडी कानूनी रिपोर्ट" : "AISA COURT-READY LEGAL REPORT"}</h1>
+        <div class="meta">
+          <div><strong>${isHi ? "उत्पन्न तिथि" : "Date Generated"}:</strong> ${new Date().toLocaleString()}</div>
+          <div><strong>${isHi ? "संदर्भ" : "Reference"}:</strong> ${chatIdRef.current.toUpperCase()}</div>
+        </div>
+        <div class="content">${resolvedText.replace(/###\s+/g, '').replace(/##\s+/g, '').replace(/#\s+/g, '').replace(/\*\*/g, '').replace(/\*/g, '')}</div>
+        <script>
+          window.onload = function() { window.print(); window.close(); }
+        </script>
+      </body>
+      </html>
+    `;
+    printWindow.document.write(cleanHtml);
+    printWindow.document.close();
+  };
+
+  return (
+    <>
+      <AiMessageWithLangToggle
+        text={msg.text}
+        msgId={msg.id}
+        outputLang={outputLang}
+        getDisplayText={getDisplayText}
+        translateText={translateText}
+        onLangChange={setOutputLang}
+      />
+      {/* Action Bar */}
+      {!msg.isIntro ? (
+        <div className="legal-research-action-bar border-t border-slate-100 dark:border-white/5 mt-3 pt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+          <button onClick={handleCopyText} className="legal-research-action-btn flex items-center gap-1 font-bold hover:text-indigo-600 transition-colors" title="Copy Response">
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+            <span>Copy Response</span>
+          </button>
+          <span className="text-slate-200 dark:text-white/10 select-none">|</span>
+          
+          <button onClick={handleExportPDF} className="legal-research-action-btn flex items-center gap-1 font-bold hover:text-indigo-600 transition-colors" title="Export PDF">
+            <FileText size={13} />
+            <span>Export PDF</span>
+          </button>
+          <span className="text-slate-200 dark:text-white/10 select-none">|</span>
+          
+          {/* Download Menu */}
+          <div className="relative">
+            <button onClick={() => setActiveDownloadMenu(prev => !prev)} className="legal-research-action-btn flex items-center gap-1 font-bold hover:text-indigo-600 transition-colors" title="Download options">
+              <Download size={13} />
+              <span>Download</span>
+            </button>
+            {activeDownloadMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setActiveDownloadMenu(false)} />
+                <div className="absolute left-0 bottom-full mb-2 z-20 w-32 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200/80 dark:border-white/10 shadow-xl p-1 flex flex-col gap-0.5">
+                  <button onClick={() => { handleDownloadTxt(); setActiveDownloadMenu(false); }} className="w-full text-left px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors">TXT Format</button>
+                  <button onClick={() => { handleDownloadDoc(); setActiveDownloadMenu(false); }} className="w-full text-left px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors">DOCX Format</button>
+                  <button onClick={() => { handleExportPDF(); setActiveDownloadMenu(false); }} className="w-full text-left px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors">PDF Format</button>
+                </div>
+              </>
+            )}
+          </div>
+          <span className="text-slate-200 dark:text-white/10 select-none">|</span>
+
+          {/* Share Menu */}
+          <div className="relative">
+            <button onClick={() => setActiveShareMenu(prev => !prev)} className="legal-research-action-btn flex items-center gap-1 font-bold hover:text-indigo-600 transition-colors" title="Share options">
+              <Share2 size={13} />
+              <span>Share Report</span>
+            </button>
+            {activeShareMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setActiveShareMenu(false)} />
+                <div className="absolute left-0 bottom-full mb-2 z-20 w-38 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200/80 dark:border-white/10 shadow-xl p-1 flex flex-col gap-0.5">
+                  <button onClick={() => { handleShareEmail(); setActiveShareMenu(false); }} className="w-full text-left px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors">Email Report</button>
+                  <button onClick={() => { handleShareLink(); setActiveShareMenu(false); }} className="w-full text-left px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors">Copy Link</button>
+                  <button onClick={() => { handleExportPDF(); setActiveShareMenu(false); }} className="w-full text-left px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors">Download PDF</button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <button onClick={handlePrint} className="legal-research-action-btn flex items-center gap-1 font-bold hover:text-indigo-600 transition-colors" title="Print Report">
+            <Printer size={13} />
+            <span>Print</span>
+          </button>
+        </div>
+      ) : (
+        <div className="legal-msg-footer">
+          <span className="legal-msg-time">{safeFormatTime(msg.timestamp)}</span>
+        </div>
+      )}
+    </>
+  );
 };
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
@@ -75,6 +346,7 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
   const [activeCitationData, setActiveCitationData] = useState(null);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [pinnedSessions, setPinnedSessions] = useState([]);
+
 
   // Load pinned sessions from currentCase
   useEffect(() => {
@@ -135,110 +407,6 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
   };
 
 
-  // ─── LEGAL ACTION BAR HANDLERS ─────────────────────────────────────────────
-  const handleCopyText = (text, id) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-    toast.success("Response copied to clipboard");
-  };
-
-  const handleExportPDF = (text) => {
-    try {
-      const doc = new jsPDF();
-      const margin = 20;
-      const pageW = doc.internal.pageSize.getWidth();
-      const pageH = doc.internal.pageSize.getHeight();
-      const maxW = pageW - margin * 2;
-      
-      // Title
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.text("AISA AI LEGAL RESEARCH REPORT", margin, 20);
-      doc.setLineWidth(0.5);
-      doc.line(margin, 23, pageW - margin, 23);
-      
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Reference ID: ${chatIdRef.current.toUpperCase()}`, margin, 29);
-      doc.text(`Date Generated: ${new Date().toLocaleString()}`, margin, 34);
-      doc.line(margin, 37, pageW - margin, 37);
-      
-      // Content
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10.5);
-      
-      const cleanText = text
-        .replace(/###\s+/g, '')
-        .replace(/##\s+/g, '')
-        .replace(/#\s+/g, '')
-        .replace(/\*\*/g, '')
-        .replace(/\*/g, '');
-        
-      const lines = doc.splitTextToSize(cleanText, maxW);
-      let y = 45;
-      
-      for (let i = 0; i < lines.length; i++) {
-        if (y > pageH - margin) {
-          doc.addPage();
-          y = margin;
-        }
-        doc.text(lines[i], margin, y);
-        y += 6;
-      }
-      
-      doc.save(`Legal_Research_Report_${Date.now()}.pdf`);
-      toast.success("PDF exported successfully");
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to export PDF");
-    }
-  };
-
-  const handleDownloadTxt = (text) => {
-    try {
-      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Legal_Report_${Date.now()}.txt`;
-      a.click();
-      toast.success("Downloaded as TXT");
-    } catch (e) {
-      toast.error("Failed to download");
-    }
-  };
-
-  const handleDownloadDoc = (text) => {
-    try {
-      const blob = new Blob([text], { type: 'application/msword;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Legal_Report_${Date.now()}.doc`;
-      a.click();
-      toast.success("Downloaded as DOCX");
-    } catch (e) {
-      toast.error("Failed to download");
-    }
-  };
-
-  const handleShareEmail = (text) => {
-    window.open(`mailto:?subject=AI Legal Research Report&body=${encodeURIComponent(text.slice(0, 2000) + '\n\n...[Report Truncated]')}`);
-  };
-
-  const handleShareLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast.success("Share link copied to clipboard");
-  };
-
-  const handleShareInternal = () => {
-    if (currentCase) {
-      toast.success(`Report shared with case: ${currentCase.title || currentCase.name}`);
-    } else {
-      toast.error("No active case selected to share internally.");
-    }
-  };
 
   const getPrecedingUserMessage = (msgId) => {
     const index = messages.findIndex(m => m.id === msgId);
@@ -329,40 +497,6 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
     const citations = matches.length > 0 ? Array.from(new Set(matches)).join("\n") : `AISA AI Legal Research Portal, Ref: ${chatIdRef.current.slice(0, 8).toUpperCase()}`;
     navigator.clipboard.writeText(citations);
     toast.success("Citations extracted and copied to clipboard");
-  };
-
-  const handlePrint = (text) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast.error("Popup blocked! Please allow popups to print.");
-      return;
-    }
-    const cleanHtml = `
-      <html>
-      <head>
-        <title>AISA Legal Report</title>
-        <style>
-          body { font-family: 'Times New Roman', serif; padding: 40px; line-height: 1.6; color: #111; }
-          h1 { text-align: center; font-size: 22px; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 20px; }
-          .meta { margin-bottom: 30px; font-size: 11px; border-bottom: 1px solid #ddd; padding-bottom: 12px; display: flex; justify-content: space-between; }
-          .content { font-size: 13.5px; white-space: pre-wrap; text-align: justify; }
-        </style>
-      </head>
-      <body>
-        <h1>AISA COURT-READY LEGAL REPORT</h1>
-        <div class="meta">
-          <div><strong>Date Generated:</strong> ${new Date().toLocaleString()}</div>
-          <div><strong>Reference:</strong> ${chatIdRef.current.toUpperCase()}</div>
-        </div>
-        <div class="content">${text.replace(/###\s+/g, '').replace(/##\s+/g, '').replace(/#\s+/g, '').replace(/\*\*/g, '').replace(/\*/g, '')}</div>
-        <script>
-          window.onload = function() { window.print(); window.close(); }
-        </script>
-      </body>
-      </html>
-    `;
-    printWindow.document.write(cleanHtml);
-    printWindow.document.close();
   };
 
   // ─── LEGAL DATABASE STATES ──────────────────────────────────────────────────
@@ -983,75 +1117,18 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
                     </div>
                   )}
                   {isAi ? (
-                    <div className="legal-msg-ai-text">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
-                    </div>
+                    <AiResponseCard
+                      msg={msg}
+                      currentCase={currentCase}
+                      chatIdRef={chatIdRef}
+                    />
                   ) : (
-                    <p className="legal-msg-user-text">{msg.text}</p>
-                  )}
-                  {isAi && !msg.isIntro ? (
-                    <div className="legal-research-action-bar border-t border-slate-100 dark:border-white/5 mt-3 pt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                      <button onClick={() => handleCopyText(msg.text, msg.id)} className="legal-research-action-btn flex items-center gap-1 font-bold hover:text-indigo-600 transition-colors" title="Copy Response">
-                        {copiedId === msg.id ? <Check size={13} /> : <Copy size={13} />}
-                        <span>Copy Response</span>
-                      </button>
-                      <span className="text-slate-200 dark:text-white/10 select-none">|</span>
-                      
-                      <button onClick={() => handleExportPDF(msg.text)} className="legal-research-action-btn flex items-center gap-1 font-bold hover:text-indigo-600 transition-colors" title="Export PDF">
-                        <FileText size={13} />
-                        <span>Export PDF</span>
-                      </button>
-                      <span className="text-slate-200 dark:text-white/10 select-none">|</span>
-                      
-                      {/* Download Menu */}
-                      <div className="relative">
-                        <button onClick={() => setActiveDownloadMenu(activeDownloadMenu === msg.id ? null : msg.id)} className="legal-research-action-btn flex items-center gap-1 font-bold hover:text-indigo-600 transition-colors" title="Download options">
-                          <Download size={13} />
-                          <span>Download</span>
-                        </button>
-                        {activeDownloadMenu === msg.id && (
-                          <>
-                            <div className="fixed inset-0 z-10" onClick={() => setActiveDownloadMenu(null)} />
-                            <div className="absolute left-0 bottom-full mb-2 z-20 w-32 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200/80 dark:border-white/10 shadow-xl p-1 flex flex-col gap-0.5">
-                              <button onClick={() => { handleDownloadTxt(msg.text); setActiveDownloadMenu(null); }} className="w-full text-left px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors">TXT Format</button>
-                              <button onClick={() => { handleDownloadDoc(msg.text); setActiveDownloadMenu(null); }} className="w-full text-left px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors">DOCX Format</button>
-                              <button onClick={() => { handleExportPDF(msg.text); setActiveDownloadMenu(null); }} className="w-full text-left px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors">PDF Format</button>
-                            </div>
-                          </>
-                        )}
+                    <>
+                      <p className="legal-msg-user-text">{msg.text}</p>
+                      <div className="legal-msg-footer">
+                        <span className="legal-msg-time">{safeFormatTime(msg.timestamp)}</span>
                       </div>
-                      <span className="text-slate-200 dark:text-white/10 select-none">|</span>
-
-                      {/* Share Menu */}
-                      <div className="relative">
-                        <button onClick={() => handleShareReport(msg.text, msg.id)} className="legal-research-action-btn flex items-center gap-1 font-bold hover:text-indigo-600 transition-colors" title="Share options">
-                          <Share2 size={13} />
-                          <span>Share Report</span>
-                        </button>
-                        {activeShareMenu === msg.id && (
-                          <>
-                            <div className="fixed inset-0 z-10" onClick={() => setActiveShareMenu(null)} />
-                            <div className="absolute left-0 bottom-full mb-2 z-20 w-38 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200/80 dark:border-white/10 shadow-xl p-1 flex flex-col gap-0.5">
-                              <button onClick={() => { handleShareEmail(msg.text); setActiveShareMenu(null); }} className="w-full text-left px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors">Email Report</button>
-                              <button onClick={() => { handleShareLink(); setActiveShareMenu(null); }} className="w-full text-left px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors">Copy Link</button>
-                              <button onClick={() => { handleExportPDF(msg.text); setActiveShareMenu(null); }} className="w-full text-left px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors">Download PDF</button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-
-
-
-                      <button onClick={() => handlePrint(msg.text)} className="legal-research-action-btn flex items-center gap-1 font-bold hover:text-indigo-600 transition-colors" title="Print Report">
-                        <Printer size={13} />
-                        <span>Print</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="legal-msg-footer">
-                      <span className="legal-msg-time">{safeFormatTime(msg.timestamp)}</span>
-                    </div>
+                    </>
                   )}
                 </div>
               </motion.div>
@@ -1077,6 +1154,19 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
           </motion.div>
         )}
         <div ref={messagesEndRef} />
+      </div>
+
+      {/* ── NEW CHAT BUTTON ───────────────────────────────────────────── */}
+      <div className="w-full px-4 pb-2 flex justify-start shrink-0">
+        <button
+          type="button"
+          className="legal-input-action-btn legal-input-action-btn-label"
+          onClick={handleNewChat}
+          title="Start New Chat"
+        >
+          <Plus size={15} />
+          <span>New Chat</span>
+        </button>
       </div>
 
       {/* ── INPUT BAR ─────────────────────────────────────────────────── */}
@@ -1108,16 +1198,6 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
         )}
         <div className="legal-chat-input-row">
           <div className="legal-chat-input-buttons">
-            <button
-              type="button"
-              className="legal-input-action-btn legal-input-action-btn-label"
-              onClick={handleNewChat}
-              title="Start New Chat"
-            >
-              <Plus size={15} />
-              <span>New Chat</span>
-            </button>
-            
             <button
               type="button"
               className={`legal-input-action-btn ${attachments.length > 0 ? 'active' : ''}`}
@@ -1203,13 +1283,13 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
                 <div className="legal-cases-sheet-drag">
                   <div className="legal-cases-drag-bar" />
                 </div>
-                <div className="legal-cases-sheet-header">
-                  <Scale size={20} style={{ color: toolColor }} />
-                  <h3>Browse Cases</h3>
-                  <button onClick={() => setShowCasesSheet(false)} className="legal-cases-close">
-                    <X size={18} />
-                  </button>
-                </div>
+              <div className="legal-cases-sheet-header">
+                <Scale size={20} style={{ color: toolColor }} />
+                <h3>Browse Cases</h3>
+                <button onClick={() => setShowCasesSheet(false)} className="legal-cases-close">
+                  <X size={18} />
+                </button>
+              </div>
                 
                 {/* Search Bar + Collapsible Filters Toggle */}
                 <div className="legal-cases-search-container">
@@ -1578,7 +1658,7 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 12px 16px;
+          padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
           background: #ffffff;
           border-bottom: 1px solid rgba(0,0,0,0.06);
           flex-shrink: 0;
@@ -1820,7 +1900,7 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
 
         /* ── MESSAGES ───────────────────────────────────── */
         .legal-chat-messages {
-          flex: 1; overflow-y: auto; padding: 20px 16px 12px;
+          flex: 1; overflow-y: auto; padding: 14px 16px 12px;
           display: flex; flex-direction: column; gap: 16px;
           scroll-behavior: smooth;
           min-height: 0;
@@ -1977,7 +2057,8 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
 
         /* ── INPUT AREA ─────────────────────────────────── */
         .legal-chat-input-area {
-          flex-shrink: 0; padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+          flex-shrink: 0;
+          padding: 8px 12px 0px 12px;
           background: #ffffff;
           border-top: 1px solid rgba(0,0,0,0.06);
         }
@@ -2222,7 +2303,13 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
         }
         .dark .legal-cases-sheet-header h3 { color: #f1f5f9; }
         .legal-cases-close {
-          background: none; border: none; cursor: pointer; padding: 4px;
+          position: absolute;
+          top: 16px;
+          right: 16px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 4px;
           color: #94a3b8;
         }
         .dark .legal-cases-close { color: #64748b; }
@@ -2553,10 +2640,10 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
         @media (max-width: 374px) {
           .legal-msg-row { max-width: 95%; }
           .legal-chat-messages { padding: 12px 8px 6px; gap: 10px; }
-          .legal-chat-header { padding: 8px 10px; gap: 8px; }
+          .legal-chat-header { padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px; gap: 8px; }
           .legal-chat-header-icon { width: 28px; height: 28px; border-radius: 8px; }
           .legal-chat-header-title { font-size: 13px; }
-          .legal-chat-input-area { padding: 5px 6px calc(6px + env(safe-area-inset-bottom, 0px)); }
+          .legal-chat-input-area { padding: 5px 6px 0px; }
           .legal-chat-input-form { padding: 4px 6px; border-radius: 20px; }
           .legal-chat-input { font-size: 13px; min-height: 30px; }
           .legal-input-icon-btn { width: 30px; height: 30px; }
@@ -2575,9 +2662,9 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
         /* Small phones (375px-639px) */
         @media (min-width: 375px) and (max-width: 639px) {
           .legal-msg-row { max-width: 92%; }
-          .legal-chat-messages { padding: 16px 10px 8px; gap: 12px; }
-          .legal-chat-header { padding: 10px 12px; }
-          .legal-chat-input-area { padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
+          .legal-chat-messages { padding: 14px 10px 8px; gap: 12px; }
+          .legal-chat-header { padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px; }
+          .legal-chat-input-area { padding: 6px 8px 0px; }
           .legal-input-action-btn { width: 34px; height: 34px; }
           .legal-chat-input-buttons { gap: 6px; margin-bottom: 3px; }
           .legal-cases-btn span { display: none; }
@@ -2586,36 +2673,36 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
         /* Foldables & small tablets (600px-767px) */
         @media (min-width: 600px) and (max-width: 767px) {
           .legal-msg-row { max-width: 85%; }
-          .legal-chat-messages { padding: 20px 16px 12px; gap: 14px; }
-          .legal-chat-header { padding: 12px 20px; }
-          .legal-chat-input-area { padding: 8px 14px calc(10px + env(safe-area-inset-bottom, 0px)); }
+          .legal-chat-messages { padding: 14px 16px 12px; gap: 14px; }
+          .legal-chat-header { padding: calc(12px + env(safe-area-inset-top, 0px)) 20px 12px; }
+          .legal-chat-input-area { padding: 8px 14px 0px; }
           .legal-cases-container { align-items: center; padding: 20px; }
           .legal-cases-sheet { max-width: 400px; border-radius: 24px; max-height: 80vh; }
         }
         /* Tablets portrait (768px-1023px) */
         @media (min-width: 768px) and (max-width: 1023px) {
           .legal-msg-row { max-width: 80%; }
-          .legal-chat-messages { padding: 24px 5% 14px; gap: 16px; }
-          .legal-chat-header { padding: 14px 24px; }
-          .legal-chat-input-area { padding: 10px 20px calc(12px + env(safe-area-inset-bottom, 0px)); }
+          .legal-chat-messages { padding: 16px 5% 14px; gap: 16px; }
+          .legal-chat-header { padding: calc(14px + env(safe-area-inset-top, 0px)) 24px 14px; }
+          .legal-chat-input-area { padding: 10px 20px 0px; }
           .legal-cases-container { align-items: center; padding: 24px; }
           .legal-cases-sheet { max-width: 420px; border-radius: 24px; max-height: 80vh; }
         }
         /* Desktop (1024px-1279px) */
         @media (min-width: 1024px) {
-          .legal-chat-messages { padding: 24px 8%; }
+          .legal-chat-messages { padding: 16px 8%; }
           .legal-msg-row { max-width: 72%; }
           .legal-cases-container { align-items: center; padding: 24px; }
           .legal-cases-sheet { max-width: 480px; border-radius: 24px; max-height: 80vh; }
         }
         /* Large desktop (1280px-1919px) */
         @media (min-width: 1280px) {
-          .legal-chat-messages { padding: 28px 12%; }
+          .legal-chat-messages { padding: 16px 12%; }
           .legal-msg-row { max-width: 65%; }
         }
         /* Ultra-wide / 4K (1920px+) */
         @media (min-width: 1920px) {
-          .legal-chat-messages { padding: 32px 18%; }
+          .legal-chat-messages { padding: 16px 18%; }
           .legal-msg-row { max-width: 55%; }
           .legal-msg-ai-text { font-size: 15px; }
           .legal-msg-user-text { font-size: 15px; }
@@ -2624,7 +2711,7 @@ const LegalChatScreen = ({ onBack, currentCase, onUpdateCase }) => {
         @media (max-height: 500px) and (orientation: landscape) {
           .legal-chat-header { padding: 6px 12px; }
           .legal-chat-header-icon { width: 28px; height: 28px; }
-          .legal-chat-input-area { padding: 4px 10px calc(4px + env(safe-area-inset-bottom, 0px)); }
+          .legal-chat-input-area { padding: 4px 10px 0px; }
           .legal-chat-input-form { padding: 4px 6px; }
           .legal-chat-input { min-height: 28px; max-height: 80px; }
           .legal-msg-row { max-width: 75%; }

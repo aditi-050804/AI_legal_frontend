@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Scale, Gavel, ChevronDown, Plus, Trash2,
@@ -10,8 +10,21 @@ import {
 import toast from 'react-hot-toast';
 import { generateChatResponse } from '../../../services/geminiService';
 import { apiService } from '../../../services/apiService';
-import { jsPDF } from 'jspdf';
 import { consumePrefillIntent, mapCaseToForm } from '../services/activeModuleService';
+import useOutputLanguage from '../hooks/useOutputLanguage';
+import LanguageToggle from './shared/LanguageToggle';
+import { exportToPDF } from '../utils/exportToPDF';
+
+// Devanagari translation mapping for labels
+const HINDI_LABELS = {
+  'Generate Written Argument': 'लिखित तर्क',
+  'Generate Oral Argument': 'मौखिक तर्क',
+  'Generate Final Submission': 'अंतिम प्रस्तुति',
+  'Counter Argument Analysis': 'विपक्षी तर्क विश्लेषण',
+  'Generate Judge Perspective': 'न्यायाधीश परिप्रेक्ष्य',
+  'Generate Winning Strategy': 'जीतने की रणनीति',
+  'Generating...': 'उत्पन्न किया जा रहा है...'
+};
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const CASE_TYPES = ['Civil', 'Criminal', 'Family', 'Consumer', 'Labour', 'Property', 'Arbitration', 'Writ', 'Appeal'];
@@ -489,6 +502,58 @@ const BuildArgumentModal = ({ isOpen, onClose, currentCase, onUpdateCase }) => {
   const [saving, setSaving] = useState(false);
   const outputRef = useRef(null);
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  // ─── LANGUAGE TOGGLE STATE ────────────────────────────────────────
+  const {
+    outputLang,
+    setOutputLang,
+    isTranslating: isOutputTranslating,
+    setIsTranslating: setIsOutputTranslating,
+    translateText: translateOutputText,
+    getDisplayText: getOutputDisplayText,
+  } = useOutputLanguage('build_argument_output', caseId || 'global');
+
+  const [translatedOutput, setTranslatedOutput] = useState('');
+
+  // Re-run whenever output changes or outputLang changes
+  useEffect(() => {
+    if (outputLang === 'en' || !output) {
+      setTranslatedOutput('');
+      return;
+    }
+    const cached = getOutputDisplayText(output);
+    if (cached && cached !== output) {
+      setTranslatedOutput(cached);
+      return;
+    }
+    setIsOutputTranslating(true);
+    translateOutputText(output).then((translated) => {
+      if (isMountedRef.current) setTranslatedOutput(translated);
+      setIsOutputTranslating(false);
+    }).catch(() => {
+      if (isMountedRef.current) setTranslatedOutput('');
+      setIsOutputTranslating(false);
+    });
+  }, [output, outputLang, getOutputDisplayText, translateOutputText, setIsOutputTranslating]);
+
+  // Reset output language when output changes
+  useEffect(() => {
+    if (output) {
+      setOutputLang('en');
+      setTranslatedOutput('');
+    }
+  }, [output]); // eslint-disable-line
+
+  const displayOutput = useMemo(() => {
+    if (outputLang === 'hi' && translatedOutput) return translatedOutput;
+    return output;
+  }, [outputLang, translatedOutput, output]);
+
   // ── AI GENERATE ────────────────────────────────────────────────────────────
   const handleGenerate = async (actionId) => {
     const errors = validate(form);
@@ -560,58 +625,47 @@ const BuildArgumentModal = ({ isOpen, onClose, currentCase, onUpdateCase }) => {
   };
 
   // ── EXPORT PDF ──────────────────────────────────────────────────────────────
-  const handlePDF = () => {
-    if (!output) { toast.error('Generate an argument first.'); return; }
+  const handlePDF = async () => {
+    if (!displayOutput) { toast.error('Generate an argument first.'); return; }
+    const isHi = outputLang === 'hi';
+    const cleanOutputLabel = isHi ? (HINDI_LABELS[outputLabel] || outputLabel) : outputLabel;
+    const toastId = toast.loading(isHi ? 'PDF तैयार किया जा रहा है...' : 'Generating PDF...');
     try {
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const M = 20, PW = doc.internal.pageSize.getWidth(), PH = doc.internal.pageSize.getHeight();
-      const maxW = PW - M * 2;
-
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
-      doc.text('AISA™ AI LEGAL — COURT ARGUMENT DOCUMENT', M, 18);
-      doc.setLineWidth(0.4); doc.line(M, 21, PW - M, 21);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
-      doc.text(`Case: ${form.caseTitle || 'N/A'}`, M, 27);
-      doc.text(`Case No: ${form.caseNumber || 'N/A'} | Court: ${form.courtName || 'N/A'} | Type: ${form.caseType || 'N/A'}`, M, 32);
-      doc.text(`Parties: ${form.petitioner || 'N/A'} vs ${form.respondent || 'N/A'}`, M, 37);
-      doc.text(`Generated: ${new Date().toLocaleString('en-IN')} | Type: ${outputLabel}`, M, 42);
-      doc.line(M, 45, PW - M, 45);
-
-      // Clean markdown
-      const clean = output
-        .replace(/^#{1,3}\s+/gm, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/`/g, '')
-        .replace(/─+/g, '─'.repeat(30)).replace(/\r\n/g, '\n');
-
-      doc.setFontSize(9.5);
-      const lines = doc.splitTextToSize(clean, maxW);
-      let y = 52;
-      for (const line of lines) {
-        if (y > PH - M) { doc.addPage(); y = M; }
-        // Simple heading detection: ALL CAPS line → bold
-        if (/^[A-Z\s\d.]+$/.test(line.trim()) && line.trim().length > 3 && line.trim().length < 60) {
-          doc.setFont('helvetica', 'bold');
-        } else {
-          doc.setFont('helvetica', 'normal');
-        }
-        doc.text(line, M, y);
-        y += 5.5;
-      }
-      doc.save(`AISA_${outputLabel.replace(/\s+/g, '_')}_${form.caseTitle || 'Case'}_${Date.now()}.pdf`);
-      toast.success('PDF exported!');
+      const el = document.getElementById('argument-rendered-output');
+      await exportToPDF({
+        element: el,
+        text: displayOutput,
+        title: isHi ? 'AISA™ एआई कानूनी — कोर्ट आर्गुमेंट दस्तावेज़' : 'AISA™ AI Legal — Court Argument Document',
+        filename: `AISA_${cleanOutputLabel.replace(/\s+/g, '_')}_${(form.caseTitle || 'Case').replace(/\s+/g, '_')}`,
+        lang: outputLang,
+        meta: {
+          [isHi ? 'मामला' : 'Case']: form.caseTitle || 'N/A',
+          [isHi ? 'न्यायालय' : 'Court']: form.courtName || 'N/A',
+          [isHi ? 'पक्षकार' : 'Parties']: `${form.petitioner || ''} ${isHi ? 'बनाम' : 'vs'} ${form.respondent || ''}`,
+          [isHi ? 'उत्पन्न तिथि' : 'Generated']: new Date().toLocaleString(),
+        },
+      });
+      toast.success(isHi ? 'PDF सफलतापूर्वक निर्यात किया गया!' : 'PDF exported successfully!', { id: toastId });
     } catch (e) {
       console.error(e);
-      toast.error('PDF export failed. Try copy instead.');
+      toast.error(isHi ? 'PDF निर्यात विफल' : 'PDF export failed. Try copy instead.', { id: toastId });
     }
   };
 
   // ── EXPORT DOCX ─────────────────────────────────────────────────────────────
   const handleDocx = () => {
-    if (!output) { toast.error('Generate an argument first.'); return; }
-    const header = `AISA AI LEGAL — COURT ARGUMENT DOCUMENT\n${'='.repeat(60)}\nCase: ${form.caseTitle}\nCase No: ${form.caseNumber} | Court: ${form.courtName}\nGenerated: ${new Date().toLocaleString('en-IN')}\n${'='.repeat(60)}\n\n`;
-    const blob = new Blob([header + output], { type: 'application/msword' });
+    if (!displayOutput) { toast.error('Generate an argument first.'); return; }
+    const isHi = outputLang === 'hi';
+    const cleanOutputLabel = isHi ? (HINDI_LABELS[outputLabel] || outputLabel) : outputLabel;
+    
+    const header = isHi
+      ? `AISA एआई कानूनी — कोर्ट आर्गुमेंट दस्तावेज़\n${'='.repeat(60)}\nमामला: ${form.caseTitle || 'N/A'}\nमामला संख्या: ${form.caseNumber || 'N/A'} | न्यायालय: ${form.courtName || 'N/A'}\nउत्पन्न तिथि: ${new Date().toLocaleString('hi-IN')}\n${'='.repeat(60)}\n\n`
+      : `AISA AI LEGAL — COURT ARGUMENT DOCUMENT\n${'='.repeat(60)}\nCase: ${form.caseTitle || 'N/A'}\nCase No: ${form.caseNumber || 'N/A'} | Court: ${form.courtName || 'N/A'}\nGenerated: ${new Date().toLocaleString('en-IN')}\n${'='.repeat(60)}\n\n`;
+      
+    const blob = new Blob([header + displayOutput], { type: 'application/msword;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url;
-    a.download = `AISA_${outputLabel.replace(/\s+/g, '_')}_${form.caseTitle || 'Case'}_${Date.now()}.doc`;
+    a.download = `AISA_${cleanOutputLabel.replace(/\s+/g, '_')}_${(form.caseTitle || 'Case').replace(/\s+/g, '_')}_${Date.now()}.doc`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success('DOCX downloaded!');
@@ -619,20 +673,31 @@ const BuildArgumentModal = ({ isOpen, onClose, currentCase, onUpdateCase }) => {
 
   // ── PRINT ────────────────────────────────────────────────────────────────────
   const handlePrint = () => {
-    if (!output) { toast.error('Generate an argument first.'); return; }
+    if (!displayOutput) { toast.error('Generate an argument first.'); return; }
     const win = window.open('', '_blank');
     if (!win) { toast.error('Allow popups to print.'); return; }
-    const clean = output.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,3}\s*/g, '');
-    win.document.write(`<!DOCTYPE html><html><head><title>${outputLabel} — ${form.caseTitle}</title>
+    
+    const isHi = outputLang === 'hi';
+    const cleanOutputLabel = isHi ? (HINDI_LABELS[outputLabel] || outputLabel) : outputLabel;
+    const titleText = isHi ? "कोर्ट आर्गुमेंट दस्तावेज़" : "COURT ARGUMENT DOCUMENT";
+    const caseText = isHi ? "मामला" : "Case";
+    const caseNoText = isHi ? "संख्या" : "No.";
+    const dateText = isHi ? "दिनांक" : "Date";
+    const dateStr = isHi ? new Date().toLocaleDateString('hi-IN') : new Date().toLocaleDateString('en-IN');
+
+    const clean = displayOutput.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,3}\s*/g, '');
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${cleanOutputLabel} — ${form.caseTitle}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,700;1,400&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
   @page { margin: 25mm 20mm; }
-  body { font-family: "Times New Roman", serif; font-size: 13pt; line-height: 1.9; color: #000; }
+  body { font-family: 'Noto Sans Devanagari', 'Noto Sans', Arial, sans-serif; font-size: 13pt; line-height: 1.9; color: #000; }
   h1 { font-size: 15pt; text-align: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 12px; }
   .meta { font-size: 9pt; border-bottom: 1px solid #aaa; padding-bottom: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; }
   .content { text-align: justify; white-space: pre-wrap; }
 </style></head><body>
-<h1>COURT ARGUMENT DOCUMENT</h1>
-<div class="meta"><span><b>Case:</b> ${form.caseTitle} | <b>No.:</b> ${form.caseNumber}</span><span><b>Date:</b> ${new Date().toLocaleDateString('en-IN')}</span></div>
+<h1>${titleText}</h1>
+<div class="meta"><span><b>${caseText}:</b> ${form.caseTitle} | <b>${caseNoText}:</b> ${form.caseNumber}</span><span><b>${dateText}:</b> ${dateStr}</span></div>
 <div class="content">${clean}</div>
 <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),1000);}</script>
 </body></html>`);
@@ -641,8 +706,8 @@ const BuildArgumentModal = ({ isOpen, onClose, currentCase, onUpdateCase }) => {
 
   // ── COPY ─────────────────────────────────────────────────────────────────────
   const handleCopy = () => {
-    if (!output) { toast.error('Generate an argument first.'); return; }
-    navigator.clipboard.writeText(output).then(() => {
+    if (!displayOutput) { toast.error('Generate an argument first.'); return; }
+    navigator.clipboard.writeText(displayOutput).then(() => {
       setCopied(true); setTimeout(() => setCopied(false), 2000);
       toast.success('Copied to clipboard!');
     });
@@ -650,7 +715,7 @@ const BuildArgumentModal = ({ isOpen, onClose, currentCase, onUpdateCase }) => {
 
   // ── SAVE TO CASE ─────────────────────────────────────────────────────────────
   const handleSaveToCase = async () => {
-    if (!output) { toast.error('Generate an argument first.'); return; }
+    if (!displayOutput) { toast.error('Generate an argument first.'); return; }
     if (!caseId) { toast.error('No active case. Please open a case first.'); return; }
 
     setSaving(true);
@@ -661,7 +726,7 @@ const BuildArgumentModal = ({ isOpen, onClose, currentCase, onUpdateCase }) => {
         id: `arg_${Date.now()}`,
         type: outputLabel,
         actionId: activeAction || 'unknown',
-        text: output,
+        text: displayOutput,
         formSnapshot: {
           caseTitle: form.caseTitle,
           caseNumber: form.caseNumber,
@@ -1221,10 +1286,19 @@ const BuildArgumentModal = ({ isOpen, onClose, currentCase, onUpdateCase }) => {
                           <div className={`w-2 h-2 rounded-full shrink-0 ${generating ? 'bg-violet-500 animate-pulse' : 'bg-emerald-500'}`} />
                           <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate">{outputLabel}</span>
                         </div>
-                        <button onClick={() => { setShowOutput(false); setOutput(''); }}
-                          className="p-1 text-slate-400 hover:text-red-500 transition-colors shrink-0 ml-2">
-                          <X size={13} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {!generating && output && (
+                            <LanguageToggle
+                              lang={outputLang}
+                              onChange={setOutputLang}
+                              isTranslating={isOutputTranslating}
+                            />
+                          )}
+                          <button onClick={() => { setShowOutput(false); setOutput(''); }}
+                            className="p-1 text-slate-400 hover:text-red-500 transition-colors shrink-0 ml-2">
+                            <X size={13} />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Content */}
@@ -1249,7 +1323,9 @@ const BuildArgumentModal = ({ isOpen, onClose, currentCase, onUpdateCase }) => {
                             </div>
                           </div>
                         ) : output ? (
-                          <RenderedOutput text={output} />
+                          <div id="argument-rendered-output">
+                            <RenderedOutput text={displayOutput} />
+                          </div>
                         ) : null}
                       </div>
 
