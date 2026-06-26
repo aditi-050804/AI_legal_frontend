@@ -11,6 +11,7 @@ import { consumePrefillIntent, mapCaseToForm } from '../services/activeModuleSer
 import { apiService } from '../../../services/apiService';
 import useOutputLanguage from '../hooks/useOutputLanguage';
 import LanguageToggle from './shared/LanguageToggle';
+import { exportToPDF } from '../utils/exportToPDF';
 
 const QUICK_PRESETS = [
   { name: 'Bail Forecast', desc: 'Predict bail approval chances for financial disputes.' },
@@ -28,6 +29,7 @@ const CasePredictor = ({ currentCase, onBack, theme, allProjects = [], onUpdateC
   const [courtName, setCourtName] = useState('');
   const [facts, setFacts] = useState('');
   const [evidenceList, setEvidenceList] = useState('');
+  const [evidenceFiles, setEvidenceFiles] = useState([]);
   const [opponentDetails, setOpponentDetails] = useState('');
   const [witnessDetails, setWitnessDetails] = useState('');
 
@@ -146,6 +148,21 @@ const originalReportText = useMemo(() => {
       toast.success(`✓ Case data pre-loaded for prediction`, { icon: '⚖️', duration: 3000 });
     }
   }, []);
+
+  // Load history count on mount (from localStorage when no case is selected)
+  useEffect(() => {
+    if (!currentCase?._id) {
+      try {
+        const localData = localStorage.getItem('aisa_case_predictions_history');
+        if (localData) {
+          const parsed = JSON.parse(localData);
+          setHistoryData(parsed);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [currentCase]);
 
   // Sync state values automatically when currentCase changes
   useEffect(() => {
@@ -302,7 +319,19 @@ const originalReportText = useMemo(() => {
 
   // Sync predictions list to the case's database project
   const savePredictionToHistory = async (prediction) => {
-    if (!currentCase?._id) return;
+    if (!currentCase?._id) {
+      // Save to localStorage when no case is selected
+      try {
+        const localData = localStorage.getItem('aisa_case_predictions_history');
+        const existing = localData ? JSON.parse(localData) : [];
+        const updated = [prediction, ...existing.filter(h => h.id !== prediction.id)];
+        localStorage.setItem('aisa_case_predictions_history', JSON.stringify(updated));
+        setHistoryData(updated);
+      } catch (e) {
+        console.error(e);
+      }
+      return;
+    }
     try {
       const targetCase = allProjects.find(p => p._id === currentCase._id);
       if (!targetCase) return;
@@ -527,7 +556,7 @@ Ensure all report values in "reports" are long, detailed, professional legal bri
       Witness Details: ${fData.witnessDetails}
       `;
 
-      const response = await generateChatResponse([], query, systemPrompt, [], 'English', null, 'legal');
+      const response = await generateChatResponse([], query, systemPrompt, evidenceFiles, 'English', null, 'legal');
       const reply = response?.reply || response || '';
 
       let parsedJson = null;
@@ -715,11 +744,57 @@ Ensure all report values in "reports" are long, detailed, professional legal bri
     toast.success("Report brief copied to clipboard!");
   };
 
-  // Share report link mock
-  const handleShareReport = () => {
-    if (!currentCase?._id) return;
-    navigator.clipboard.writeText(window.location.href);
-    toast.success("Case reference link copied to clipboard!");
+  // Share report via native share sheet
+  const handleShareReport = async () => {
+    if (!activePrediction) return;
+
+    const titles = {
+      predictionReport: "Case Prediction Report",
+      litigationStrategyReport: "Litigation Strategy Report",
+      judicialForecastReport: "Judicial Forecast Report",
+      riskAssessmentReport: "Risk Assessment Report",
+      advocateBrief: "Advocate Brief"
+    };
+    
+    const reportTitle = titles[selectedReportTab] || "Case Predictor Brief";
+    const reportContent = displayReportText;
+
+    // Test if file sharing is supported
+    const dummyFile = new File([''], 'test.txt', { type: 'text/plain' });
+    const supportsFiles = navigator.share && navigator.canShare && navigator.canShare({ files: [dummyFile] });
+
+    if (!supportsFiles) {
+      toast.error("Your browser does not support file sharing. Please use the Download button instead.");
+      return;
+    }
+
+    try {
+      toast.loading("Preparing PDF to share...", { id: 'sharePdf' });
+      
+      const blob = await exportToPDF({
+        text: reportContent,
+        title: reportTitle,
+        filename: 'Shared_Brief',
+        returnBlob: true,
+      });
+      
+      const file = new File([blob], `${reportTitle.replace(/\s+/g, '_')}.pdf`, { type: 'application/pdf' });
+      
+      await navigator.share({
+        title: reportTitle,
+        text: 'Here is the case prediction brief.',
+        files: [file]
+      });
+      
+      toast.success("PDF shared successfully!", { id: 'sharePdf' });
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error(err);
+        toast.error("Failed to share PDF", { id: 'sharePdf' });
+      } else {
+        toast.dismiss('sharePdf');
+      }
+    }
   };
 
   // Highlight keywords within report text
@@ -781,7 +856,23 @@ Ensure all report values in "reports" are long, detailed, professional legal bri
             </button>
           )}
           <button 
-            onClick={() => setHistoryVisible(true)} 
+            onClick={() => {
+              if (currentCase?._id) {
+                loadPredictionHistory();
+              } else {
+                // Load from localStorage when no case is selected
+                try {
+                  const localData = localStorage.getItem('aisa_case_predictions_history');
+                  if (localData) {
+                    const parsed = JSON.parse(localData);
+                    setHistoryData(parsed);
+                  }
+                } catch (e) {
+                  console.error(e);
+                }
+              }
+              setHistoryVisible(true);
+            }} 
             className={`flex items-center gap-1.5 px-3.5 py-2 border rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
               isDark 
                 ? 'bg-indigo-950/20 border-indigo-900/30 text-indigo-400 hover:bg-indigo-950/40' 
@@ -1082,11 +1173,36 @@ Ensure all report values in "reports" are long, detailed, professional legal bri
                 <div className="flex flex-col gap-1.5">
                   <label className={`text-[9px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Evidences & Documents</label>
                   <input 
-                    type="text" 
-                    placeholder="e.g. CCTV recording, transaction log, emails" 
-                    value={evidenceList}
-                    onChange={e => setEvidenceList(e.target.value)}
-                    className={`border rounded-xl px-4 py-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20 ${
+                    type="file" 
+                    multiple
+                    accept=".pdf,image/*"
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files);
+                      if (files.length > 0) {
+                        const fileNames = files.map(f => f.name).join(', ');
+                        setEvidenceList(fileNames);
+                        
+                        const processedFiles = await Promise.all(files.map(file => {
+                          return new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              resolve({
+                                url: event.target.result,
+                                type: file.type.startsWith('image/') ? 'image' : 'document',
+                                name: file.name,
+                                mimeType: file.type
+                              });
+                            };
+                            reader.readAsDataURL(file);
+                          });
+                        }));
+                        setEvidenceFiles(processedFiles);
+                      } else {
+                        setEvidenceList('');
+                        setEvidenceFiles([]);
+                      }
+                    }}
+                    className={`border rounded-xl px-4 py-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 ${
                       isDark ? 'bg-black/20 border-zinc-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
                     }`}
                   />
@@ -1670,7 +1786,7 @@ Ensure all report values in "reports" are long, detailed, professional legal bri
                         <div className={`p-5 rounded-2xl border text-xs sm:text-sm leading-relaxed whitespace-pre-wrap max-h-[500px] overflow-y-auto custom-scrollbar font-sans select-text ${
                           isDark ? 'bg-zinc-900/30 border-white/5 text-slate-200' : 'bg-slate-50 border-slate-100 text-slate-700 shadow-inner'
                         }`}>
-                          {highlightReportText(editedReportText || displayPrediction.reports?.[selectedReportTab] || displayPrediction.report || '', reportSearchQuery)}
+                          {highlightReportText(displayReportText || '', reportSearchQuery)}
                         </div>
                       )}
 
