@@ -280,7 +280,7 @@ function waitForFonts(iframe) {
  * @param {object}  [options.meta]         - Key-value pairs shown below the title
  * @param {string}  [options.lang]         - 'en' | 'hi'
  */
-export async function exportToPDF({ element, htmlContent, text, title, filename, meta = {}, lang = 'en' }) {
+export async function exportToPDF({ element, htmlContent, text, title, filename, meta = {}, lang = 'en', returnBlob = false }) {
   // 1. Build header HTML
   const metaRows = Object.entries(meta)
     .map(([k, v]) => `<span><strong>${k}:</strong> ${v}</span>`)
@@ -368,6 +368,10 @@ export async function exportToPDF({ element, htmlContent, text, title, filename,
 
     yOffset += sliceH;
     pageIndex++;
+  }
+
+  if (returnBlob) {
+    return doc.output('blob');
   }
 
   doc.save(`${filename}_${Date.now()}.pdf`);
