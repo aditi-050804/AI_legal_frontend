@@ -80,6 +80,7 @@ import LegalWorkspaceHeader from '../Tools/AI_Legal/components/LegalWorkspaceHea
 import LegalWorkspaceWelcome from '../Tools/AI_Legal/components/LegalWorkspaceWelcome';
 import AiLegalContent from '../Tools/AI_Legal/components/AiLegalContent';
 import useCaseWorkspaceStore from '../userStore/caseWorkspaceStore';
+import { ActiveCaseProvider } from '../Tools/AI_Legal/context/ActiveCaseContext';
 import { SelectionToolbarProvider } from '../Components/SelectionToolbar/SelectionToolbarProvider';
 import useChatGeneration from '../userStore/useChatGeneration';
 import { useChatMessages } from '../userStore/useChatMessages';
@@ -1219,62 +1220,64 @@ const Chat = () => {
           </div>
         </div>
       }>
-        {(() => {
-          const props = {
-            currentCase,
-            onBack: () => {
-              setSelectedLegalTool({ id: 'legal_my_case', name: 'My Case Assistant' });
-              setLegalView('DASHBOARD');
-              navigate('/dashboard/cases', { replace: true });
-            },
-            theme: effectiveDarkMode ? 'dark' : 'light',
-            allProjects,
-            onUpdateCase: (updated) => {
-              setCurrentCase(updated);
-              setAllProjects(prev => prev.map(p => p._id === updated._id ? updated : p));
-              if (updated?._id) {
-                setCurrentProjectId(updated._id);
-                localStorage.setItem('aisa_active_project_id', updated._id);
-                
-                const searchParams = new URLSearchParams(window.location.search);
-                let changed = false;
-                if (searchParams.get('caseId') !== updated._id) {
-                  searchParams.set('caseId', updated._id);
-                  changed = true;
-                }
-                if (selectedLegalTool?.id && searchParams.get('tool') !== selectedLegalTool.id) {
-                  searchParams.set('tool', selectedLegalTool.id);
-                  changed = true;
-                }
-                if (changed) {
-                  navigate(`${window.location.pathname}?${searchParams.toString()}`, { replace: true });
+        <ActiveCaseProvider currentCase={currentCase} activeModuleId={selectedLegalTool.id}>
+          {(() => {
+            const props = {
+              currentCase,
+              onBack: () => {
+                setSelectedLegalTool({ id: 'legal_my_case', name: 'My Case Assistant' });
+                setLegalView('DASHBOARD');
+                navigate('/dashboard/cases', { replace: true });
+              },
+              theme: effectiveDarkMode ? 'dark' : 'light',
+              allProjects,
+              onUpdateCase: (updated) => {
+                setCurrentCase(updated);
+                setAllProjects(prev => prev.map(p => p._id === updated._id ? updated : p));
+                if (updated?._id) {
+                  setCurrentProjectId(updated._id);
+                  localStorage.setItem('aisa_active_project_id', updated._id);
+                  
+                  const searchParams = new URLSearchParams(window.location.search);
+                  let changed = false;
+                  if (searchParams.get('caseId') !== updated._id) {
+                    searchParams.set('caseId', updated._id);
+                    changed = true;
+                  }
+                  if (selectedLegalTool?.id && searchParams.get('tool') !== selectedLegalTool.id) {
+                    searchParams.set('tool', selectedLegalTool.id);
+                    changed = true;
+                  }
+                  if (changed) {
+                    navigate(`${window.location.pathname}?${searchParams.toString()}`, { replace: true });
+                  }
                 }
               }
+            };
+            switch (selectedLegalTool.id) {
+              case 'legal_draft_maker':
+                return <DraftMaker {...props} />;
+              case 'legal_argument_builder':
+                return <ArgumentBuilder {...props} />;
+              case 'legal_case_predictor':
+                return <CasePredictor {...props} />;
+              case 'legal_contract_analyzer':
+                return <ContractReview {...props} />;
+              case 'legal_evidence_checker':
+                return <EvidenceAnalysis {...props} />;
+              case 'legal_strategy_engine':
+                return <StrategyEngine {...props} />;
+              case 'legal_research_assistant':
+                return <LegalResearch {...props} />;
+              case 'legal_compliance_checker':
+                return <ComplianceCenter {...props} />;
+              case 'legal_hearings':
+                return <HearingManagement {...props} />;
+              default:
+                return null;
             }
-          };
-          switch (selectedLegalTool.id) {
-            case 'legal_draft_maker':
-              return <DraftMaker {...props} />;
-            case 'legal_argument_builder':
-              return <ArgumentBuilder {...props} />;
-            case 'legal_case_predictor':
-              return <CasePredictor {...props} />;
-            case 'legal_contract_analyzer':
-              return <ContractReview {...props} />;
-            case 'legal_evidence_checker':
-              return <EvidenceAnalysis {...props} />;
-            case 'legal_strategy_engine':
-              return <StrategyEngine {...props} />;
-            case 'legal_research_assistant':
-              return <LegalResearch {...props} />;
-            case 'legal_compliance_checker':
-              return <ComplianceCenter {...props} />;
-            case 'legal_hearings':
-              return <HearingManagement {...props} />;
-            default:
-              return null;
-          }
-        })()}
+          })()}
+        </ActiveCaseProvider>
       </React.Suspense>
     );
   };
