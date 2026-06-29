@@ -12,7 +12,6 @@ import { useNavigate } from 'react-router-dom';
 import { legalService } from '../services/legalService';
 import { apiService } from '../../../services/apiService';
 import { setActiveModule as saveActiveModule, getActiveModule, MODULE_NAMES, setPrefillIntent, mapCaseToForm } from '../services/activeModuleService';
-import LegalGuideModal from './LegalGuideModal';
 import CreateCaseModal from './CreateCaseModal';
 import SavedToolsModal from './SavedToolsModal';
 import LegalDashboard from './LegalDashboard';
@@ -50,9 +49,7 @@ const AiLegalContent = ({
 
   const [activeModule, setActiveModule] = useState(null); // 'CASE_MANAGEMENT', 'HEARING_MANAGEMENT', 'COMPLIANCE_CENTER'
   const [selectedTool, setSelectedTool] = useState(null);
-  const [isGuideVisible, setIsGuideVisible] = useState(false);
   const [isCreateCaseVisible, setIsCreateCaseVisible] = useState(false);
-  const [guidedTools, setGuidedTools] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [savedTools, setSavedTools] = useState([]);
   const [isSavedToolsVisible, setIsSavedToolsVisible] = useState(false);
@@ -319,7 +316,6 @@ const AiLegalContent = ({
   useEffect(() => {
     loadDashboardData();
     checkTourStatus();
-    loadGuidedStatus();
     loadSavedTools();
   }, []);
 
@@ -463,31 +459,9 @@ const AiLegalContent = ({
     }
   };
 
-  const loadGuidedStatus = () => {
-    try {
-      const status = localStorage.getItem('guided_legal_tools');
-      if (status) setGuidedTools(JSON.parse(status));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const handleToolPress = (tool) => {
     setSelectedTool(tool);
-    if (!guidedTools.includes(tool.id)) {
-      setIsGuideVisible(true);
-    } else {
-      launchModule(tool);
-    }
-  };
-
-  const handleContinueFromGuide = () => {
-    if (!selectedTool) return;
-    const newGuided = [...guidedTools, selectedTool.id];
-    setGuidedTools(newGuided);
-    localStorage.setItem('guided_legal_tools', JSON.stringify(newGuided));
-    setIsGuideVisible(false);
-    launchModule(selectedTool);
+    launchModule(tool);
   };
 
   const launchModule = async (tool) => {
@@ -898,14 +872,6 @@ const AiLegalContent = ({
         </div>
       </div>
 
-      {/* Guide Modal */}
-      <LegalGuideModal 
-        isDark={isDark}
-        isVisible={isGuideVisible}
-        tool={selectedTool}
-        onClose={() => setIsGuideVisible(false)}
-        onContinue={handleContinueFromGuide}
-      />
 
       {/* Saved Tools Modal */}
       <SavedToolsModal 
