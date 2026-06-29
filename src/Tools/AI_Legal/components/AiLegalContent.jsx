@@ -18,6 +18,7 @@ import LegalDashboard from './LegalDashboard';
 import HearingManagement from './HearingManagement';
 import ComplianceCenter from './ComplianceCenter';
 import CaseContextModal from './CaseContextModal';
+import useCaseWorkspaceStore from '../../../userStore/caseWorkspaceStore';
 
 const ArrowLeft = ({ size = 20, className = '' }) => (
   <ChevronRight size={size} className={`transform rotate-180 ${className}`} />
@@ -463,11 +464,24 @@ const AiLegalContent = ({
       setCaseManagementFilter('All');
       setActiveModule('CASE_MANAGEMENT');
     } else {
-      // Set the selected tool and transition from DASHBOARD to CHAT view
-      setSelectedLegalTool({ id: tool.id, name: tool.title });
-      if (setLegalView) setLegalView('CHAT');
-      if (setMessages) setMessages([]); // Fresh chat — matches AISA-Mobile behavior
-      navigate('/dashboard/chat/new', { replace: true, state: { fromTool: true } });
+      const caseId = currentCase?.id || currentCase?._id;
+      if (caseId) {
+        try {
+          useCaseWorkspaceStore.getState().updateWorkspace(caseId, {
+            activeTool: { id: tool.id, name: tool.title }
+          });
+        } catch (err) {}
+        setSelectedLegalTool({ id: tool.id, name: tool.title });
+        if (setLegalView) setLegalView('CHAT');
+        if (setMessages) setMessages([]);
+        navigate(`/dashboard/case/${caseId}?tool=${tool.id}`, { replace: true, state: { fromTool: true, activeCase: true } });
+      } else {
+        // Set the selected tool and transition from DASHBOARD to CHAT view
+        setSelectedLegalTool({ id: tool.id, name: tool.title });
+        if (setLegalView) setLegalView('CHAT');
+        if (setMessages) setMessages([]); // Fresh chat — matches AISA-Mobile behavior
+        navigate('/dashboard/chat/new', { replace: true, state: { fromTool: true } });
+      }
     }
   };
 
@@ -542,31 +556,40 @@ const AiLegalContent = ({
               'legal_strategy_engine': 'Strategy Engine'
             };
             const moduleName = names[moduleId] || moduleId;
+            const caseId = caseItem?.id || caseItem?._id;
 
-            // Persist active module to localStorage + database
-            try {
-              await saveActiveModule(
-                caseItem?.id || caseItem?._id,
-                caseItem?.title || caseItem?.name,
-                moduleId,
-                moduleName,
-                'case'
-              );
-            } catch (e) {
-              console.warn('[AiLegalContent] setActiveModule failed:', e);
-            }
-
-            // Set current case immediately
-            if (setCurrentCase) setCurrentCase(caseItem);
-            if (setCurrentProjectId) setCurrentProjectId(caseItem?.id || caseItem?._id);
-
-            // Show Case Context Modal before routing
-            setCaseContextModal({
-              isOpen: true,
+            // 1. Persist active module state (fire-and-forget — don't await so UI is instant)
+            saveActiveModule(
+              caseId,
+              caseItem?.title || caseItem?.name,
               moduleId,
               moduleName,
-              caseData: caseItem,
-            });
+              'case'
+            ).catch((e) => console.warn('[AiLegalContent] setActiveModule failed:', e));
+
+            // Update Zustand case workspace store
+            if (caseId) {
+              try {
+                useCaseWorkspaceStore.getState().updateWorkspace(caseId, {
+                  activeTool: { id: moduleId, name: moduleName }
+                });
+              } catch (err) {
+                console.warn('[AiLegalContent] Zustand workspace update failed:', err);
+              }
+            }
+
+            // 2. Set current case in global state immediately
+            if (setCurrentCase) setCurrentCase(caseItem);
+            if (setCurrentProjectId) setCurrentProjectId(caseId);
+
+            // 3. Store prefill intent so the module auto-loads the case on mount
+            setPrefillIntent(caseItem, moduleId);
+
+            // 4. Navigate directly to the module case path with tool parameter
+            setSelectedLegalTool({ id: moduleId, name: moduleName });
+            if (setMessages) setMessages([]);
+            if (setLegalView) setLegalView('CHAT');
+            navigate(`/dashboard/case/${caseId}?tool=${moduleId}`, { replace: true, state: { fromTool: true, activeCase: true } });
           }}
           initialFilter={caseManagementFilter}
         />
