@@ -60,6 +60,8 @@ export const AppRoute = {
 // API Base URL - reads from VITE_AISA_BACKEND_API env variable (set in .env), falls back to production
 const API = import.meta.env.VITE_AISA_BACKEND_API || "https://aisa24.com/api";
 
+console.log("API", API);
+
 const apis = {
   resetPassword: `${API}/auth/reset-password-otp`,
   user: `${API}/user`,
