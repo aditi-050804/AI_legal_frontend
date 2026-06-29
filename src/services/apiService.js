@@ -665,6 +665,37 @@ export const apiService = {
     }
   },
 
+  // --- Admin: Chat Session Tracking ---
+  async getAdminChatSessionStats() {
+    try {
+      const response = await apiClient.get('/admin/chat-sessions/stats');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch chat session stats:', error.message);
+      throw error;
+    }
+  },
+
+  async getAdminChatSessions(params = {}) {
+    try {
+      const response = await apiClient.get('/admin/chat-sessions', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch chat sessions:', error.message);
+      throw error;
+    }
+  },
+
+  async getAdminChatSessionDetail(sessionId) {
+    try {
+      const response = await apiClient.get(`/admin/chat-sessions/${sessionId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch chat session detail:', error.message);
+      throw error;
+    }
+  },
+
   // --- Agents ---
   async getCreatedAgents() {
     try {
