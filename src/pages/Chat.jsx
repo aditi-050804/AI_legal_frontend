@@ -1021,14 +1021,13 @@ const Chat = () => {
       activateToolWithTypingEffect(toolParam, legalTool?.name, true);
     }
 
-    // Reset to normal chat if on new session with no specific tool/case/state
-    // This ensures landing on /dashboard/chat/new always shows the tool grid
-    // We only reset if NO tool is currently active to avoid clearing user intent
-    if (activeSessionId === 'new' && !params.get('caseId') && !params.get('tool') && !location.state?.fromTool && !activeTool && !activeLegalToolkit) {
+    // Reset to normal chat if on new session with no specific tool/case in URL/state
+    if (activeSessionId === 'new' && !params.get('caseId') && !params.get('tool') && !location.state?.fromTool) {
       if (currentMode === 'LEGAL_TOOLKIT') {
         console.log("[Route] Resetting Legal Toolkit mode for new session");
         setCurrentMode('NORMAL_CHAT');
         setSelectedLegalTool(null);
+        setActiveTool(null);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1075,15 +1074,24 @@ const Chat = () => {
       if (currentMode !== 'LEGAL_TOOLKIT') setCurrentMode('LEGAL_TOOLKIT');
 
       const ws = getWorkspace(caseIdInUrl);
-      if (ws?.activeTool) {
-        if (selectedLegalTool?.id !== ws.activeTool.id) setSelectedLegalTool(ws.activeTool);
-        if (activeTool !== ws.activeTool.name) setActiveTool(ws.activeTool.name);
+      const urlTool = params.get('tool');
+      let activeToolObj = null;
+
+      if (urlTool && urlTool.startsWith('legal_')) {
+        const legalTool = PREMIUM_TOOLS.find(t => t.id === urlTool) || { id: urlTool, name: urlTool };
+        activeToolObj = { id: urlTool, name: legalTool.name || urlTool };
+      } else if (ws?.activeTool) {
+        activeToolObj = ws.activeTool;
       } else {
-        if (selectedLegalTool?.id !== 'legal_my_case') setSelectedLegalTool({ id: 'legal_my_case', name: 'My Case Assistant' });
-        if (activeTool !== 'legal') setActiveTool('legal');
+        activeToolObj = { id: 'legal_my_case', name: 'My Case Assistant' };
       }
 
-      if (legalView !== 'CHAT') setLegalView('CHAT');
+      if (selectedLegalTool?.id !== activeToolObj.id) setSelectedLegalTool(activeToolObj);
+      if (activeTool !== activeToolObj.name) setActiveTool(activeToolObj.name);
+
+      const targetView = activeToolObj.id === 'legal_my_case' ? 'DASHBOARD' : 'CHAT';
+      if (legalView !== targetView) setLegalView(targetView);
+
       if (activeLegalToolkit) setActiveLegalToolkit(false);
 
       // 3. Hydrate Messages & Session Recovery
@@ -1104,7 +1112,9 @@ const Chat = () => {
               if (Array.isArray(caseSessions) && caseSessions.length > 0) {
                 const lastSid = caseSessions[0].sessionId;
                 console.log(`[Persistence] Redirecting to last case session: ${lastSid}`);
-                navigate(`/dashboard/chat/${lastSid}?caseId=${caseIdInUrl}`, { replace: true });
+                const toolParam = params.get('tool') || activeToolObj.id;
+                const toolQuery = toolParam ? `&tool=${toolParam}` : '';
+                navigate(`/dashboard/chat/${lastSid}?caseId=${caseIdInUrl}${toolQuery}`, { replace: true });
               }
             } catch (err) {
               console.error("[Persistence] Failed to fetch case sessions:", err);
@@ -1112,6 +1122,12 @@ const Chat = () => {
           }
         };
         restoreSession();
+      }
+    } else if (location.pathname === '/dashboard/cases') {
+      if (currentMode !== 'LEGAL_TOOLKIT') setCurrentMode('LEGAL_TOOLKIT');
+      if (legalView !== 'DASHBOARD') setLegalView('DASHBOARD');
+      if (selectedLegalTool?.id !== 'legal_my_case') {
+        setSelectedLegalTool({ id: 'legal_my_case', name: 'My Case Assistant' });
       }
     } else if (!caseIdInUrl && !location.pathname.startsWith('/dashboard/case') && (sessionId === 'new' || !sessionId)) {
       lastHydratedRef.current = null;
@@ -1244,6 +1260,8 @@ const Chat = () => {
             case 'legal_strategy_engine':
               return <StrategyEngine {...props} />;
             case 'legal_research_assistant':
+            case 'legal_precedents':
+            case 'legal_case_law_research':
               return <LegalResearch {...props} />;
             case 'legal_compliance_checker':
               return <ComplianceCenter {...props} />;
@@ -3723,6 +3741,11 @@ const Chat = () => {
               setActiveTool(legalTool.name);
               setLegalView('CHAT');
             }
+          } else if (location.pathname === '/dashboard/cases') {
+            setCurrentCase(null);
+            setCurrentMode('LEGAL_TOOLKIT');
+            setLegalView('DASHBOARD');
+            setSelectedLegalTool({ id: 'legal_my_case', name: 'My Case Assistant' });
           } else if (!currentProjectId || currentProjectId === 'default' || currentProjectId === 'all') {
             setCurrentCase(null);
             if (currentMode !== 'LEGAL_TOOLKIT') {
@@ -6840,7 +6863,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
                   onUseInArgument={handleUseInArgument}
                 />
               </motion.div>
-            ) : (legalView === 'DASHBOARD' || (!currentCase && location.pathname === '/dashboard/cases')) && currentMode === 'LEGAL_TOOLKIT' ? (
+            ) : (location.pathname === '/dashboard/cases' || legalView === 'DASHBOARD') && currentMode === 'LEGAL_TOOLKIT' ? (
               <motion.div
                 key="legal-dashboard"
                 initial={{ opacity: 0 }}
@@ -8033,7 +8056,7 @@ If the user asks for an image (e.g., "generate", "create", "draw", "show me a pi
         {/* Welcome Screen - Integrated Hub */}
         <AnimatePresence>
           {messages.length === 0 && !isSessionLoading && !isHydrating &&
-            !currentCase &&
+            !currentCase && location.pathname !== '/dashboard/cases' &&
             (!currentProjectId || currentProjectId === 'default' || currentProjectId === 'all') &&
             currentMode !== 'LEGAL_TOOLKIT' && !activeLegalToolkit && !selectedLegalTool && !new URLSearchParams(window.location.search).get('tool') && (
               <motion.div

@@ -459,7 +459,7 @@ export const useAILegalCRM = ({
       if (currentCase?._id === currentProjectId) {
         if (currentCase.isLegalCase && currentMode !== 'LEGAL_TOOLKIT') {
           setCurrentMode('LEGAL_TOOLKIT');
-          if (selectedLegalTool?.id !== 'legal_precedents' && selectedLegalTool?.id !== 'legal_case_law_research' && selectedLegalTool?.id !== 'legal_my_case') {
+          if (!selectedLegalTool?.id || !selectedLegalTool.id.startsWith('legal_')) {
             setSelectedLegalTool({ id: 'legal_my_case', name: 'My Case Assistant' });
           }
           if (legalView !== 'DASHBOARD' && legalView !== 'PRECEDENTS' && legalView !== 'CHAT') setLegalView('CHAT');
@@ -475,7 +475,7 @@ export const useAILegalCRM = ({
           if (currentCase?._id !== response._id) setCurrentCase(response);
           if (response.isLegalCase) {
             if (currentMode !== 'LEGAL_TOOLKIT') setCurrentMode('LEGAL_TOOLKIT');
-            if (selectedLegalTool?.id !== 'legal_precedents' && selectedLegalTool?.id !== 'legal_case_law_research' && selectedLegalTool?.id !== 'legal_my_case') {
+            if (!selectedLegalTool?.id || !selectedLegalTool.id.startsWith('legal_')) {
               setSelectedLegalTool({ id: 'legal_my_case', name: 'My Case Assistant' });
             }
             if (legalView !== 'PRECEDENTS') {
@@ -484,7 +484,10 @@ export const useAILegalCRM = ({
                 try {
                   const caseSessions = await chatStorageService.getSessions(currentProjectId);
                   if (Array.isArray(caseSessions) && caseSessions.length > 0) {
-                    navigate(`/dashboard/chat/${caseSessions[0].sessionId}`, { replace: true });
+                    const params = new URLSearchParams(location.search);
+                    const toolParam = params.get('tool') || selectedLegalTool?.id;
+                    const toolQuery = toolParam ? `&tool=${toolParam}` : '';
+                    navigate(`/dashboard/chat/${caseSessions[0].sessionId}?caseId=${currentProjectId}${toolQuery}`, { replace: true });
                   }
                 } catch (sessionErr) {
                   console.error("Failed to fetch case sessions:", sessionErr);
