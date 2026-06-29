@@ -150,7 +150,7 @@ const Sidebar = ({ isOpen, onClose, onOpenSettings }) => {
   };
 
   // Check if current user is admin
-  const token = getUserData()?.token;
+  const token = getUserData()?.token || localStorage.getItem('token') || localStorage.getItem('auth_token');
   const userEmail = user?.email || getUserData()?.email;
   const isAdmin = token && userEmail === 'admin@uwo24.com';
 

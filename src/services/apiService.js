@@ -14,12 +14,21 @@ const apiClient = axios.create({
 // Request interceptor for adding auth token
 apiClient.interceptors.request.use(
   (config) => {
+    let token = null;
     const user = localStorage.getItem('user');
-    if (user) {
-      const userData = JSON.parse(user);
-      if (userData.token) {
-        config.headers.Authorization = `Bearer ${userData.token}`;
+    if (user && user !== "undefined" && user !== "null") {
+      try {
+        const userData = JSON.parse(user);
+        token = userData?.token;
+      } catch (e) {
+        console.error('[apiService] Request interceptor user parse error:', e);
       }
+    }
+    if (!token || token === "undefined" || token === "null") {
+      token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+    }
+    if (token && token !== "undefined" && token !== "null") {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
