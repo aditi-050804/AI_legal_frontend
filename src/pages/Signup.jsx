@@ -42,7 +42,17 @@ const Signup = () => {
     }
 
     try {
-      const payLoad = { name, email, password };
+      const payLoad = { 
+        name, 
+        email, 
+        password,
+        acceptedTerms: true,
+        acceptedPrivacy: true,
+        acceptedCookiePolicy: true,
+        termsVersion: '1.0',
+        privacyVersion: '1.0',
+        cookiePolicyVersion: '1.0'
+      };
       const res = await axios.post(apis.signUp, payLoad);
 
       setUserData(res.data);
@@ -76,7 +86,13 @@ const Signup = () => {
         credential: tokenResponse.access_token,
         email,
         name,
-        picture
+        picture,
+        acceptedTerms: true,
+        acceptedPrivacy: true,
+        acceptedCookiePolicy: true,
+        termsVersion: '1.0',
+        privacyVersion: '1.0',
+        cookiePolicyVersion: '1.0'
       });
 
       console.log('[Google Signup] Backend response:', res.data);

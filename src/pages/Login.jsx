@@ -30,6 +30,52 @@ const Login = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [socialVerifying, setSocialVerifying] = useState(null);
 
+  // Consent Modal States
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [modalAgreedToTerms, setModalAgreedToTerms] = useState(false);
+  const [modalAcknowledgedPrivacy, setModalAcknowledgedPrivacy] = useState(false);
+  const [modalMarketingOptIn, setModalMarketingOptIn] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [pendingPayload, setPendingPayload] = useState(null);
+
+  const handleAcceptConsentModal = async () => {
+    if (!modalAgreedToTerms || !modalAcknowledgedPrivacy) return;
+
+    try {
+      localStorage.setItem('termsAcceptedVersion', 'v1.2');
+      localStorage.setItem('privacyAcceptedVersion', 'v1.1');
+      setShowConsentModal(false);
+
+      const consentPayload = {
+        acceptedTerms: true,
+        acceptedPrivacy: true,
+        termsVersion: 'v1.2',
+        privacyVersion: 'v1.1'
+      };
+
+      if (pendingAction === 'google' && pendingPayload) {
+        await handleGoogleSuccess(pendingPayload, consentPayload);
+      } else if (pendingAction === 'apple') {
+        window.location.href = `${apis.appleLogin}?acceptedTerms=true&termsVersion=v1.2&privacyVersion=v1.1`;
+      } else if (pendingAction === 'email' && pendingPayload) {
+        setEmail(pendingPayload.email);
+        setPassword(pendingPayload.password);
+        await handleSubmit(null, consentPayload);
+      }
+
+      setPendingAction(null);
+      setPendingPayload(null);
+      setModalAgreedToTerms(false);
+      setModalAcknowledgedPrivacy(false);
+    } catch (err) {
+      console.error('Failed to process consent acceptance:', err);
+      setPendingAction(null);
+      setPendingPayload(null);
+      setModalAgreedToTerms(false);
+      setModalAcknowledgedPrivacy(false);
+    }
+  };
+
   // Auto-accept cookies on login — user has agreed to platform use by signing in
   const autoAcceptCookies = () => {
     if (!localStorage.getItem('aisa_cookie_consent')) {
@@ -54,6 +100,15 @@ const Login = () => {
     const userEmail = params.get('userEmail');
     const provider = params.get('provider');
     const picture = params.get('picture');
+    const errorParam = params.get('error');
+    const providerParam = params.get('provider');
+
+    if (errorParam === 'TERMS_UPDATE_REQUIRED' && providerParam === 'apple') {
+      setPendingAction('apple');
+      setShowConsentModal(true);
+      navigate('/login', { replace: true });
+      return;
+    }
 
     // sso_token is now handled globally in Navigation.Provider.jsx via SSOInterceptor
 
@@ -87,14 +142,17 @@ const Login = () => {
   }, [location, navigate, setUserRecoil]);
 
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, consentPayload = null) => {
+    if (e) e.preventDefault();
     setMessage("");
     setLoading(true);
     setError(false);
 
     try {
       const payload = { email, password };
+      if (consentPayload) {
+        Object.assign(payload, consentPayload);
+      }
       const res = await axios.post(apis.logIn, payload);
 
       toast.success(t('successLogin'));
@@ -110,6 +168,14 @@ const Login = () => {
       console.log("[LOGIN] Standard login success, initiating merge...");
       chatStorageService.mergeGuestChats();
     } catch (err) {
+      if (err.response?.data?.code === 'TERMS_UPDATE_REQUIRED') {
+        setPendingAction('email');
+        setPendingPayload({ email, password });
+        setShowConsentModal(true);
+        setLoading(false);
+        return;
+      }
+
       if (email === 'test_legal_agent@example.com' || err.message?.includes('Network Error') || err.response?.status >= 500 || !err.response) {
         toast.success("Logging in with Mock demo account (Offline/Demo Mode)");
         const from = location.state?.from || AppRoute.DASHBOARD;
@@ -138,7 +204,7 @@ const Login = () => {
     }
   };
 
-  const handleGoogleSuccess = async (tokenResponse) => {
+  const handleGoogleSuccess = async (tokenResponse, consentPayload = null) => {
     setGoogleLoading(true);
     setError(false);
     setMessage(null);
@@ -152,12 +218,17 @@ const Login = () => {
       const { email, name, picture } = userInfoRes.data;
 
       // Send to our backend
-      const res = await axios.post(apis.googleLogin, {
+      const payload = {
         credential: tokenResponse.access_token,
         email,
         name,
         picture
-      });
+      };
+      if (consentPayload) {
+        Object.assign(payload, consentPayload);
+      }
+
+      const res = await axios.post(apis.googleLogin, payload);
 
       toast.success('Logged in with Google!');
       const from = location.state?.from || AppRoute.DASHBOARD;
@@ -172,6 +243,14 @@ const Login = () => {
       console.log("[LOGIN] Google login success, initiating merge...");
       chatStorageService.mergeGuestChats();
     } catch (err) {
+      if (err.response?.data?.code === 'TERMS_UPDATE_REQUIRED') {
+        setPendingAction('google');
+        setPendingPayload(tokenResponse);
+        setShowConsentModal(true);
+        setGoogleLoading(false);
+        return;
+      }
+
       setError(true);
       const errorMessage = err.response?.data?.error || 'Google login failed';
       setMessage(errorMessage);
@@ -393,6 +472,113 @@ const Login = () => {
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* HIGH-FIDELITY CONSENT MODAL DIALOG */}
+      <AnimatePresence>
+        {showConsentModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              className="relative w-full max-w-[360px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-[2rem] shadow-2xl text-center"
+            >
+              <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2 uppercase tracking-tighter">
+                Accept Terms & Policy
+              </h3>
+              <p className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-wider mb-6">
+                Please accept our terms of service and privacy policy to continue.
+              </p>
+
+              <div className="space-y-4 mb-6 text-left">
+                {/* Terms and conditions check */}
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={modalAgreedToTerms}
+                    onChange={(e) => setModalAgreedToTerms(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
+                  />
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 leading-tight">
+                    I agree to the{' '}
+                    <a
+                      href="https://uwo24.com/terms-of-service.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-bold"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Terms & Conditions
+                    </a>
+                  </span>
+                </label>
+
+                {/* Privacy policy check */}
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={modalAcknowledgedPrivacy}
+                    onChange={(e) => setModalAcknowledgedPrivacy(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
+                  />
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 leading-tight">
+                    I acknowledge the{' '}
+                    <a
+                      href="https://uwo24.com/privacy-policy.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-bold"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Privacy Policy
+                    </a>
+                  </span>
+                </label>
+
+                {/* Marketing Updates */}
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={modalMarketingOptIn}
+                    onChange={(e) => setModalMarketingOptIn(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
+                  />
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-500 leading-tight">
+                    I agree to receive marketing updates (Optional)
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowConsentModal(false);
+                    setPendingAction(null);
+                    setPendingPayload(null);
+                  }}
+                  className="flex-1 py-3 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400 font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!modalAgreedToTerms || !modalAcknowledgedPrivacy}
+                  onClick={handleAcceptConsentModal}
+                  className="flex-1 py-3 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-primary/95 transition-colors disabled:opacity-50"
+                >
+                  Continue
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
