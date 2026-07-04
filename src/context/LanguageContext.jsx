@@ -8,6 +8,8 @@ const LanguageContext = createContext();
 export const LanguageProvider = ({ children }) => {
     const { personalizations, updatePersonalization } = usePersonalization();
 
+    // Single Source of Truth from PersonalizationContext
+    // Language selection will apply A to Z across the UI
     const rawLanguage = personalizations?.general?.language || 'English';
     const language = rawLanguage;
     const region = personalizations?.general?.region || 'India';
@@ -197,6 +199,11 @@ export const LanguageProvider = ({ children }) => {
             return engData[key];
         }
         return undefined;
+    };
+
+    const tLegal = (key) => {
+        const langData = translations[toolkitLanguage] || translations['English'];
+        return langData[key] || translations['English'][key] || key;
     };
 
     return (

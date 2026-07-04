@@ -11,6 +11,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGoogleLogin } from '@react-oauth/google';
 import { logo } from '../constants';
 import { chatStorageService } from '../services/chatStorageService';
+import PrivacyPolicyModal from '../landingpage/PolicyModals/PrivacyPolicyModal';
+import TermsOfServiceModal from '../landingpage/PolicyModals/TermsOfServiceModal';
+import CookiePolicyModal from '../landingpage/PolicyModals/CookiePolicyModal';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -27,6 +30,9 @@ const Signup = () => {
   const [passwordError, setPasswordError] = useState(null);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isCookieOpen, setIsCookieOpen] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,7 +48,17 @@ const Signup = () => {
     }
 
     try {
-      const payLoad = { name, email, password };
+      const payLoad = { 
+        name, 
+        email, 
+        password,
+        acceptedTerms: true,
+        acceptedPrivacy: true,
+        acceptedCookiePolicy: true,
+        termsVersion: '1.0',
+        privacyVersion: '1.0',
+        cookiePolicyVersion: '1.0'
+      };
       const res = await axios.post(apis.signUp, payLoad);
 
       setUserData(res.data);
@@ -76,7 +92,13 @@ const Signup = () => {
         credential: tokenResponse.access_token,
         email,
         name,
-        picture
+        picture,
+        acceptedTerms: true,
+        acceptedPrivacy: true,
+        acceptedCookiePolicy: true,
+        termsVersion: '1.0',
+        privacyVersion: '1.0',
+        cookiePolicyVersion: '1.0'
       });
 
       console.log('[Google Signup] Backend response:', res.data);
@@ -236,9 +258,9 @@ const Signup = () => {
                 />
                 <label htmlFor="terms-agree" className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed cursor-pointer select-none">
                   I agree to the{' '}
-                  <Link to="/terms" className="text-primary hover:underline font-semibold">Terms of Service</Link>,{' '}
-                  <Link to="/privacy-policy" className="text-primary hover:underline font-semibold">Privacy Policy</Link>, and{' '}
-                  <Link to="/cookie-policy" className="text-primary hover:underline font-semibold">Cookie Policy</Link>
+                  <button type="button" onClick={(e) => { e.preventDefault(); setIsTermsOpen(true); }} className="text-primary hover:underline font-semibold bg-transparent border-0 p-0 align-baseline cursor-pointer">Terms of Service</button>,{' '}
+                  <button type="button" onClick={(e) => { e.preventDefault(); setIsPrivacyOpen(true); }} className="text-primary hover:underline font-semibold bg-transparent border-0 p-0 align-baseline cursor-pointer">Privacy Policy</button>, and{' '}
+                  <button type="button" onClick={(e) => { e.preventDefault(); setIsCookieOpen(true); }} className="text-primary hover:underline font-semibold bg-transparent border-0 p-0 align-baseline cursor-pointer">Cookie Policy</button>
                 </label>
               </div>
               {/* Signup Button - Vibrant Blue Style */}
@@ -320,6 +342,11 @@ const Signup = () => {
           </Link>
         </motion.div>
       </div>
+
+      {/* Policy Modals */}
+      <TermsOfServiceModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} />
+      <PrivacyPolicyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
+      <CookiePolicyModal isOpen={isCookieOpen} onClose={() => setIsCookieOpen(false)} />
     </div>
   );
 };
