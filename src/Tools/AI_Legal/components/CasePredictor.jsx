@@ -15,6 +15,7 @@ import { apiService } from '../../../services/apiService';
 import { mapCaseToForm } from '../services/activeModuleService';
 import { useActiveCase } from '../context/ActiveCaseContext';
 import useOutputLanguage from '../hooks/useOutputLanguage';
+import { useLanguage } from '../../../context/LanguageContext';
 import LanguageToggle from './shared/LanguageToggle';
 import { exportToPDF } from '../utils/exportToPDF';
 
@@ -1060,6 +1061,7 @@ const LegalReportViewer = ({ reportText, isDark }) => {
 };
 
 const CasePredictor = ({ currentCase, onBack, theme, allProjects = [], onUpdateCase }) => {
+  const { toolkitLanguage, setToolkitLanguage } = useLanguage();
   const isDark = theme === 'dark';
 
   // Form states
@@ -2130,7 +2132,7 @@ Ensure all report narrative text in "reports" are long, detailed, professional l
       Witness Details: ${fData.witnessDetails}
       `;
 
-      const response = await generateChatResponse([], query, systemPrompt, evidenceFiles, 'English', null, 'legal');
+      const response = await generateChatResponse([], query, systemPrompt, evidenceFiles, toolkitLanguage || 'English', null, 'legal');
       const reply = response?.reply || response || '';
 
       let parsedJson = null;
@@ -2748,6 +2750,7 @@ Ensure all report narrative text in "reports" are long, detailed, professional l
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+          <LanguageToggle lang={toolkitLanguage === 'Hindi' ? 'hi' : 'en'} onChange={(l) => setToolkitLanguage(l === 'hi' ? 'Hindi' : 'English')} />
           {currentCase && (
             <button 
               onClick={handlePrefillFromActiveCase}

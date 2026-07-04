@@ -15,6 +15,7 @@ import { mapCaseToForm } from '../services/activeModuleService';
 import { useActiveCase } from '../context/ActiveCaseContext';
 import { getUserData } from '../../../userStore/userData';
 import useOutputLanguage from '../hooks/useOutputLanguage';
+import { useLanguage } from '../../../context/LanguageContext';
 import LanguageToggle from './shared/LanguageToggle';
 import CopyOutputButton from './shared/CopyOutputButton';
 
@@ -224,6 +225,7 @@ Section 9. Governing Law: Subject to Courts of Delhi.`;
 };
 
 const ContractReview = ({ currentCase, onBack, theme, allProjects = [], onUpdateCase }) => {
+  const { toolkitLanguage, setToolkitLanguage } = useLanguage();
   const isDark = theme === 'dark';
   
   // Platform States
@@ -881,7 +883,7 @@ const ContractReview = ({ currentCase, onBack, theme, allProjects = [], onUpdate
         currentMessage,
         systemPrompt,
         [{ url: `data:${fileObj.type || 'application/pdf'};base64,${conflictObj.base64}`, name: fileObj.name, type: fileObj.type.startsWith('image/') ? 'image' : 'document' }],
-        'English',
+        toolkitLanguage || 'English',
         null,
         'legal'
       );
@@ -947,7 +949,7 @@ const ContractReview = ({ currentCase, onBack, theme, allProjects = [], onUpdate
         currentMessage,
         systemPrompt,
         [{ url: `data:${fileObj.type || 'application/pdf'};base64,${conflictObj.base64}`, name: fileObj.name, type: fileObj.type.startsWith('image/') ? 'image' : 'document' }],
-        'English',
+        toolkitLanguage || 'English',
         null,
         'legal'
       );
@@ -1010,7 +1012,7 @@ const ContractReview = ({ currentCase, onBack, theme, allProjects = [], onUpdate
         currentMessage,
         systemPrompt,
         [{ url: `data:${fileObj.type || 'application/pdf'};base64,${conflictObj.base64}`, name: fileObj.name, type: fileObj.type.startsWith('image/') ? 'image' : 'document' }],
-        'English',
+        toolkitLanguage || 'English',
         null,
         'legal'
       );
@@ -1043,7 +1045,7 @@ Provide a comparative analysis in JSON format:
         "Compare the versions",
         comparePrompt,
         [],
-        'English',
+        toolkitLanguage || 'English',
         null,
         'legal'
       );
@@ -1146,7 +1148,7 @@ Provide a comparative analysis in JSON format:
           currentMessage,
           systemPrompt,
           [{ url: `data:${fileObj.type || 'application/pdf'};base64,${fileObj.base64}`, name: fileObj.name, type: fileObj.type.startsWith('image/') ? 'image' : 'document' }],
-          'English',
+          toolkitLanguage || 'English',
           null,
           'legal'
         );
@@ -1606,7 +1608,7 @@ DO NOT fabricate clauses that are not present in the Contract Document.`;
         userMessage,
         systemPrompt,
         [],
-        'English',
+        toolkitLanguage || 'English',
         null,
         'legal'
       );
@@ -1670,7 +1672,7 @@ DO NOT fabricate clauses that are not present in the Contract Document.`;
         const retrySystemPrompt = `You are a legal contract analyzer. Output ONLY a raw JSON object with NO markdown, NO explanation, just the JSON. The JSON must have a "stats" key at minimum.`;
         const retryUserMsg = `Analyze this contract and return ONLY valid JSON with keys: stats (overallScore, riskScore, complianceScore, negotiationScore, missingClausesCount, highRiskClausesCount, mediumRiskClausesCount, lowRiskClausesCount, totalClausesCount, timeSaved, reviewStatus, confidenceRate), summary (contractType, parties, effectiveDate, expiryDate, duration, jurisdiction, governingLaw, paymentTerms, renewalStatus, businessPurpose), executiveSummary (overallAssessment, majorLegalRisks, commercialRisks, financialRisks, complianceConcerns, urgentActionItems, negotiationPriorities, topOpportunities, finalRecommendation), clauses (array), missingClauses (array), compliance (array), finalOpinion (status, reasoning).\n\nContract:\n${text.slice(0, 4000)}`;
         try {
-          const retryResp = await generateChatResponse([], retryUserMsg, retrySystemPrompt, [], 'English', null, 'legal');
+          const retryResp = await generateChatResponse([], retryUserMsg, retrySystemPrompt, [], toolkitLanguage || 'English', null, 'legal');
           const retryText = retryResp.reply || retryResp || '';
           
           // Try Strategy 1
@@ -1923,7 +1925,7 @@ Output ONLY the rewritten clause text inside a code block. Do NOT add conversati
         `Original Clause Name: ${activeRewriteClause.name}\nOriginal Text: ${activeRewriteClause.text}\n\nRewrite Style: ${rewriteTone}`,
         systemPrompt,
         [],
-        'English',
+        toolkitLanguage || 'English',
         null,
         'legal'
       );
@@ -1992,7 +1994,7 @@ Provide clean, professional, courtroom-ready responses.`;
         chatInput,
         systemPrompt,
         [],
-        'English',
+        toolkitLanguage || 'English',
         null,
         'legal'
       );
@@ -2051,7 +2053,7 @@ JSON Schema:
         `PRIMARY CONTRACT:\n${contractText}\n\nSECONDARY CONTRACT BASE64 STAGED.\nPlease compare files.`,
         systemPrompt,
         [{ url: `data:application/pdf;base64,${secondContractFile.base64}`, name: secondContractFile.name, type: 'document' }],
-        'English',
+        toolkitLanguage || 'English',
         null,
         'legal'
       );
@@ -2692,7 +2694,8 @@ SUMMARY INFO:
               <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider animate-pulse shrink-0 hidden sm:inline">✓ Synced</span>
             )}
           </div>
-          <div className="shrink-0 flex items-center">
+          <div className="shrink-0 flex items-center gap-2">
+            <LanguageToggle lang={toolkitLanguage === 'Hindi' ? 'hi' : 'en'} onChange={(l) => setToolkitLanguage(l === 'hi' ? 'Hindi' : 'English')} />
             <button
               onClick={() => setHistoryVisible(true)}
               title="View AI audit history"

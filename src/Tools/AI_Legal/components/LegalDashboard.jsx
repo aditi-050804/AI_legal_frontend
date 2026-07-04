@@ -23,12 +23,505 @@ import { apiService } from '../../../services/apiService';
 import { generateChatResponse } from '../../../services/geminiService';
 import TimelineDetailsModal from './TimelineDetailsModal';
 import AiHearingClerkModal from './AiHearingClerkModal';
+import LanguageToggle from './shared/LanguageToggle';
 import FullScreenCaseAssistant from './FullScreenCaseAssistant';
 import { chatStorageService } from '../../../services/chatStorageService';
+import useOutputLanguage from '../hooks/useOutputLanguage';
 import './LegalDashboard.responsive.css';
 
+const localDashboardTranslations = {
+  English: {
+    "My Cases": "My Cases",
+    "Browse, search, sort, and manage all your litigation case folders.": "Browse, search, sort, and manage all your litigation case folders.",
+    "Search cases by name, client, opponent, court...": "Search cases by name, client, opponent, court...",
+    "Status: All Statuses": "Status: All Statuses",
+    "Court: All Courts": "Court: All Courts",
+    "Sort: Last Updated": "Sort: Last Updated",
+    "Grid": "Grid",
+    "List": "List",
+    "CASE NAME": "CASE NAME",
+    "CASE TYPE": "CASE TYPE",
+    "COURT": "COURT",
+    "NEXT HEARING": "NEXT HEARING",
+    "STATUS": "STATUS",
+    "ACTIONS": "ACTIONS",
+    "OPEN WORKSPACE": "OPEN WORKSPACE",
+    "Open Workspace": "Open Workspace",
+    "New Case Folder": "New Case Folder",
+    "New Case": "New Case",
+    "Active": "Active",
+    "Closed": "Closed",
+    "Pending": "Pending",
+    "All": "All",
+    "All Statuses": "All Statuses",
+    "All Courts": "All Courts",
+    "Last Updated": "Last Updated",
+    "Name": "Name",
+    "Created Date": "Created Date",
+    "Overview": "Overview",
+    "Timeline": "Timeline",
+    "Hearings": "Hearings",
+    "Parties": "Parties",
+    "Documents": "Documents",
+    "Evidence Vault": "Evidence Vault",
+    "Research & Laws": "Research & Laws",
+    "Drafts": "Drafts",
+    "Contracts": "Contracts",
+    "Arguments": "Arguments",
+    "Notes": "Notes",
+    "Precedents": "Precedents",
+    "Tasks": "Tasks",
+    "CASE SUMMARY": "CASE SUMMARY",
+    "AI Summary": "AI Summary",
+    "Edit Facts": "Edit Facts",
+    "Save Notes": "Save Notes",
+    "Enter case details, client statements, or dispute facts...": "Enter case details, client statements, or dispute facts...",
+    "WIN PROBABILITY": "WIN PROBABILITY",
+    "BASED ON CURRENT EVIDENCE AND PRECEDENT STRENGTH": "BASED ON CURRENT EVIDENCE AND PRECEDENT STRENGTH",
+    "TASK PROGRESS": "TASK PROGRESS",
+    "Completed steps": "Completed steps",
+    "Manage Tasks": "Manage Tasks",
+    "AI RISK ASSESSMENT": "AI RISK ASSESSMENT",
+    "HIGH RISK OF DELAY": "HIGH RISK OF DELAY",
+    "MEDIUM RISK OF DELAY": "MEDIUM RISK OF DELAY",
+    "LOW RISK OF DELAY": "LOW RISK OF DELAY",
+    "CRITICAL VULNERABILITIES": "CRITICAL VULNERABILITIES",
+    "OPPONENT STRATEGY PREDICTION": "OPPONENT STRATEGY PREDICTION",
+    "AI SUGGESTIONS": "AI SUGGESTIONS",
+    "AI CASE JOURNEY TIMELINE": "AI CASE JOURNEY TIMELINE",
+    "Merge Duplicates": "Merge Duplicates",
+    "Add Event": "Add Event",
+    "AI Extract": "AI Extract",
+    "Search chronology (e.g. \"evidence before first hearing\", \"orders in july\")...": "Search chronology (e.g. \"evidence before first hearing\", \"orders in july\")...",
+    "Search chronology...": "Search chronology...",
+    "ORDERS": "ORDERS",
+    "EVIDENCE": "EVIDENCE",
+    "HEARINGS": "HEARINGS",
+    "RESEARCH": "RESEARCH",
+    "ARGUMENTS": "ARGUMENTS",
+    "AI GENERATED": "AI GENERATED",
+    "PINNED": "PINNED",
+    "BOOKMARKED": "BOOKMARKED",
+    "RECENT": "RECENT",
+    "IMPORTANT": "IMPORTANT",
+    "HIGH RISK": "HIGH RISK",
+    "Source": "Source",
+    "Related": "Related",
+    "Confidence": "Confidence",
+    "Generate Argument": "Generate Argument",
+    "UPCOMING HEARINGS": "UPCOMING HEARINGS",
+    "PAST HEARINGS": "PAST HEARINGS",
+    "Add Hearing": "Add Hearing",
+    "Scheduled": "Scheduled",
+    "Completed": "Completed",
+    "Adjourned": "Adjourned",
+    "No hearings scheduled yet.": "No hearings scheduled yet.",
+    "Court": "Court",
+    "Judge": "Judge",
+    "Time": "Time",
+    "Remarks": "Remarks",
+    "Order": "Order",
+    "Client / Complainant": "Client / Complainant",
+    "Opponent / Accused": "Opponent / Accused",
+    "Associated Lawyers": "Associated Lawyers",
+    "Witnesses": "Witnesses",
+    "Respondent": "Respondent",
+    "Petitioner": "Petitioner",
+    "Plaintiff": "Plaintiff",
+    "Defendant": "Defendant",
+    "Address": "Address",
+    "Contact": "Contact",
+    "Role": "Role",
+    "Advocate": "Advocate",
+    "UPLOAD DOCUMENT": "UPLOAD DOCUMENT",
+    "Upload Files": "Upload Files",
+    "Recent Documents": "Recent Documents",
+    "OCR COMPLETED": "OCR COMPLETED",
+    "Extracted text context stored. Available for timeline, research, and arguments.": "Extracted text context stored. Available for timeline, research, and arguments.",
+    "Preview": "Preview",
+    "Download": "Download",
+    "Delete": "Delete",
+    "Contracts": "Contracts",
+    "Orders": "Orders",
+    "Evidence": "Evidence",
+    "Search documents...": "Search documents...",
+    "EVIDENCE VAULT": "EVIDENCE VAULT",
+    "Evidence Strength": "Evidence Strength",
+    "AI Confidence": "AI Confidence",
+    "Verified": "Verified",
+    "Pending": "Pending",
+    "Weak": "Weak",
+    "Strong": "Strong",
+    "Flagged": "Flagged",
+    "Upload Proof": "Upload Proof",
+    "Type": "Type",
+    "Media": "Media",
+    "Financial": "Financial",
+    "Communication": "Communication",
+    "Court Order": "Court Order",
+    "Search evidence...": "Search evidence...",
+    "AI LEGAL RESEARCH ASSISTANT": "AI LEGAL RESEARCH ASSISTANT",
+    "Research Summary": "Research Summary",
+    "Applicable Laws": "Applicable Laws",
+    "Case Laws": "Case Laws",
+    "Acts": "Acts",
+    "Sections": "Sections",
+    "Recommendations": "Recommendations",
+    "Legal Analysis": "Legal Analysis",
+    "Search laws...": "Search laws...",
+    "DRAFT STATUS": "DRAFT STATUS",
+    "Generated": "Generated",
+    "Saved": "Saved",
+    "Version": "Version",
+    "Language": "Language",
+    "Last Updated": "Last Updated",
+    "Search drafts...": "Search drafts...",
+    "CONTRACT RISK SCANNER": "CONTRACT RISK SCANNER",
+    "Pending Review": "समीक्षा लंबित",
+    "Signed": "हस्ताक्षरित",
+    "Unsigned": "अहस्ताक्षरित",
+    "Expired": "समाप्त",
+    "Risk Score": "जोखिम स्कोर",
+    "Agreement": "समझौता",
+    "Employment": "रोजगार",
+    "Lease": "पट्टा",
+    "Commercial": "व्यावसायिक",
+    "Vendor": "विक्रेता",
+    "Property": "संपत्ति",
+    "Loan": "ऋण",
+    "Search contracts...": "Search contracts...",
+    "Upload Contract": "Upload Contract",
+    "AI COURTROOM ARGUMENTS": "AI COURTROOM ARGUMENTS",
+    "Counter Arguments": "Counter Arguments",
+    "Strength": "Strength",
+    "Weakness": "Weakness",
+    "Supporting Evidence": "Supporting Evidence",
+    "Case Law": "Case Law",
+    "Suggestion": "Suggestion",
+    "Generate": "Generate",
+    "Improve": "Improve",
+    "Search arguments...": "Search arguments...",
+    "Notebook": "Notebook",
+    "Templates": "Templates",
+    "Strategy": "Strategy",
+    "Witness": "Witness",
+    "Hearing": "Hearing",
+    "Checklist": "Checklist",
+    "Priority": "Priority",
+    "Pinned": "Pinned",
+    "Archived": "Archived",
+    "Search notes...": "Search notes...",
+    "Relevant Cases": "Relevant Cases",
+    "Supreme Court": "Supreme Court",
+    "High Court": "High Court",
+    "Citation": "Citation",
+    "Ratio": "Ratio",
+    "Judgment": "Judgment",
+    "Bench": "Bench",
+    "Search precedents...": "Search precedents...",
+    "Create Task": "Create Task",
+    "In Progress": "In Progress",
+    "Due Today": "Due Today",
+    "Overdue": "Overdue",
+    "Reminder": "Reminder",
+    "Search tasks...": "Search tasks...",
+    "Retry": "Retry",
+    "Analyze": "Analyze",
+    "Edit": "Edit",
+    "Merge": "Merge",
+    "Open": "Open",
+    "Save": "Save",
+    "Cancel": "Cancel",
+    "Continue": "Continue",
+    "Back": "Back",
+    "Next": "Next",
+    "Critical Risk": "Critical Risk",
+    "Case Assistant": "Case Assistant",
+    "Suggestions": "Suggestions",
+    "Case Analysis": "Case Analysis",
+    "Generated Responses": "Generated Responses",
+    "Citations": "Citations",
+    "Hide AI": "Hide AI",
+    "Show AI": "Show AI",
+    "Open Case": "Open Case",
+    "No cases found": "No cases found",
+    "Create your first case to begin managing legal matters.": "Create your first case to begin managing legal matters."
+  },
+  Hindi: {
+    "My Cases": "मेरे मामले",
+    "Browse, search, sort, and manage all your litigation case folders.": "अपने सभी मुकदमेबाजी केस फ़ोल्डरों को ब्राउज़ करें, खोजें, क्रमबद्ध करें और प्रबंधित करें।",
+    "Search cases by name, client, opponent, court...": "नाम, क्लाइंट, विरोधी, अदालत द्वारा मामले खोजें...",
+    "Status: All Statuses": "स्थिति: सभी स्थितियाँ",
+    "Court: All Courts": "अदालत: सभी अदालतें",
+    "Sort: Last Updated": "क्रमबद्ध करें: अंतिम बार अपडेट किया गया",
+    "Grid": "ग्रिड",
+    "List": "सूची",
+    "CASE NAME": "मामले का नाम",
+    "CASE TYPE": "मामले का प्रकार",
+    "COURT": "अदालत",
+    "NEXT HEARING": "अगली सुनवाई",
+    "STATUS": "स्थिति",
+    "ACTIONS": "कार्रवाई",
+    "OPEN WORKSPACE": "कार्यक्षेत्र खोलें",
+    "Open Workspace": "कार्यक्षेत्र खोलें",
+    "New Case Folder": "नया केस फ़ोल्डर",
+    "New Case": "नया मामला",
+    "Active": "सक्रिय",
+    "Closed": "बंद",
+    "Pending": "लंबित",
+    "All": "सभी",
+    "All Statuses": "सभी स्थितियाँ",
+    "All Courts": "सभी अदालतें",
+    "Last Updated": "अंतिम बार अपडेट किया गया",
+    "Name": "नाम",
+    "Created Date": "बनाने की तिथि",
+    "Overview": "सिंहावलोकन",
+    "Timeline": "समयरेखा",
+    "Hearings": "सुनवाई",
+    "Parties": "पक्ष",
+    "Documents": "दस्तावेज़",
+    "Evidence Vault": "साक्ष्य तिजोरी",
+    "Research & Laws": "अनुसंधान और कानून",
+    "Drafts": "प्रारूप",
+    "Contracts": "अनुबंध",
+    "Arguments": "तर्क",
+    "Notes": "टिप्पणियां",
+    "Precedents": "कानूनी मिसालें",
+    "Tasks": "कार्य",
+    "CASE SUMMARY": "मामले का सारांश",
+    "AI Summary": "एआई सारांश",
+    "Edit Facts": "तथ्य संपादित करें",
+    "Save Notes": "नोट्स सहेजें",
+    "Enter case details, client statements, or dispute facts...": "मामले का विवरण, क्लाइंट के बयान, या विवाद के तथ्य दर्ज करें...",
+    "WIN PROBABILITY": "जीत की संभावना",
+    "BASED ON CURRENT EVIDENCE AND PRECEDENT STRENGTH": "वर्तमान साक्ष्य और मिसाल की मजबूती के आधार पर",
+    "TASK PROGRESS": "कार्य प्रगति",
+    "Completed steps": "पूरे किए गए चरण",
+    "Manage Tasks": "कार्य प्रबंधित करें",
+    "AI RISK ASSESSMENT": "एआई जोखिम मूल्यांकन",
+    "HIGH RISK OF DELAY": "देरी का उच्च जोखिम",
+    "MEDIUM RISK OF DELAY": "देरी का मध्यम जोखिम",
+    "LOW RISK OF DELAY": "देरी का कम जोखिम",
+    "CRITICAL VULNERABILITIES": "महत्वपूर्ण कमजोरियां",
+    "OPPONENT STRATEGY PREDICTION": "विरोधी रणनीति भविष्यवाणी",
+    "AI SUGGESTIONS": "एआई सुझाव",
+    "AI CASE JOURNEY TIMELINE": "एआई केस यात्रा समयरेखा",
+    "Merge Duplicates": "डुप्लिकेट मर्ज करें",
+    "Add Event": "घटना जोड़ें",
+    "AI Extract": "एआई निष्कर्षण",
+    "Search chronology (e.g. \"evidence before first hearing\", \"orders in july\")...": "घटनाक्रम खोजें (जैसे \"पहली सुनवाई से पहले सबूत\", \"जुलाई में आदेश\")...",
+    "Search chronology...": "घटनाक्रम खोजें...",
+    "ORDERS": "आदेश",
+    "EVIDENCE": "साक्ष्य",
+    "HEARINGS": "सुनवाई",
+    "RESEARCH": "अनुसंधान",
+    "ARGUMENTS": "तर्क",
+    "AI GENERATED": "एआई जेनरेटेड",
+    "PINNED": "पिन किया गया",
+    "BOOKMARKED": "बुकमार्क किया गया",
+    "RECENT": "हाल का",
+    "IMPORTANT": "महत्वपूर्ण",
+    "HIGH RISK": "उच्च जोखिम",
+    "Source": "स्रोत",
+    "Related": "संबंधित",
+    "Confidence": "विश्वास",
+    "Generate Argument": "तर्क उत्पन्न करें",
+    "UPCOMING HEARINGS": "आगामी सुनवाई",
+    "PAST HEARINGS": "पिछली सुनवाई",
+    "Add Hearing": "सुनवाई जोड़ें",
+    "Scheduled": "निर्धारित",
+    "Completed": "पूरा हुआ",
+    "Adjourned": "स्थगित",
+    "No hearings scheduled yet.": "अभी तक कोई सुनवाई निर्धारित नहीं है।",
+    "Court": "अदालत",
+    "Judge": "न्यायाधीश",
+    "Time": "समय",
+    "Remarks": "टिप्पणी",
+    "Order": "आदेश",
+    "Client / Complainant": "क्लाइंट / शिकायतकर्ता",
+    "Opponent / Accused": "विरोधी / आरोपी",
+    "Associated Lawyers": "संबद्ध वकील",
+    "Witnesses": "गवाह",
+    "Respondent": "उत्तरदाता",
+    "Petitioner": "याचिकाकर्ता",
+    "Plaintiff": "वादी",
+    "Defendant": "प्रतिवादी",
+    "Address": "पता",
+    "Contact": "संपर्क",
+    "Role": "भूमिका",
+    "Advocate": "अधिवक्ता",
+    "UPLOAD DOCUMENT": "दस्तावेज़ अपलोड करें",
+    "Upload Files": "फ़ाइलें अपलोड करें",
+    "Recent Documents": "हाल के दस्तावेज़",
+    "OCR COMPLETED": "ओसीआर पूरा हुआ",
+    "Extracted text context stored. Available for timeline, research, and arguments.": "निष्कर्षित पाठ संदर्भ सहेजा गया। समयरेखा, अनुसंधान और तर्कों के लिए उपलब्ध है।",
+    "Preview": "पूर्वावलोकन",
+    "Download": "डाउनलोड",
+    "Delete": "हटाएं",
+    "Contracts": "अनुबंध",
+    "Orders": "आदेश",
+    "Evidence": "साक्ष्य",
+    "Search documents...": "दस्तावेज़ खोजें...",
+    "EVIDENCE VAULT": "साक्ष्य तिजोरी",
+    "Evidence Strength": "साक्ष्य मजबूती",
+    "AI Confidence": "एआई विश्वास",
+    "Verified": "सत्यापित",
+    "Pending": "लंबित",
+    "Weak": "कमजोर",
+    "Strong": "मजबूत",
+    "Flagged": "चिह्नित",
+    "Upload Proof": "सबूत अपलोड करें",
+    "Type": "प्रकार",
+    "Media": "मीडिया",
+    "Financial": "वित्तीय",
+    "Communication": "संचार",
+    "Court Order": "अदालती आदेश",
+    "Search evidence...": "साक्ष्य खोजें...",
+    "AI LEGAL RESEARCH ASSISTANT": "एआई कानूनी अनुसंधान सहायक",
+    "Research Summary": "अनुसंधान सारांश",
+    "Applicable Laws": "लागू कानून",
+    "Case Laws": "केस कानून",
+    "Acts": "अधिनियम",
+    "Sections": "धारा",
+    "Recommendations": "सिफारिशें",
+    "Legal Analysis": "कानूनी विश्लेषण",
+    "Search laws...": "कानून खोजें...",
+    "DRAFT STATUS": "ड्राफ्ट स्थिति",
+    "Generated": "जेनरेट किया गया",
+    "Saved": "सहेजा गया",
+    "Version": "संस्करण",
+    "Language": "भाषा",
+    "Last Updated": "अंतिम बार अपडेट किया गया",
+    "Search drafts...": "ड्राफ्ट खोजें...",
+    "CONTRACT RISK SCANNER": "अनुबंध जोखिम स्कैनर",
+    "Pending Review": "समीक्षा लंबित",
+    "Signed": "हस्ताक्षरित",
+    "Unsigned": "अहस्ताक्षरित",
+    "Expired": "समाप्त",
+    "Risk Score": "जोखिम स्कोर",
+    "Agreement": "समझौता",
+    "Employment": "रोजगार",
+    "Lease": "पट्टा",
+    "Commercial": "व्यावसायिक",
+    "Vendor": "विक्रेता",
+    "Property": "संपत्ति",
+    "Loan": "ऋण",
+    "Search contracts...": "अनुबंध खोजें...",
+    "Upload Contract": "अनुबंध अपलोड करें",
+    "AI COURTROOM ARGUMENTS": "एआई अदालत तर्क",
+    "Counter Arguments": "विपरीत तर्क",
+    "Strength": "मजबूती",
+    "Weakness": "कमजोरी",
+    "Supporting Evidence": "संबद्ध साक्ष्य",
+    "Case Law": "केस कानून",
+    "Suggestion": "सुझाव",
+    "Generate": "उत्पन्न करें",
+    "Improve": "सुधारें",
+    "Search arguments...": "तर्क खोजें...",
+    "Notebook": "नोटबुक",
+    "Templates": "टेम्पलेट्स",
+    "Strategy": "रणनीति",
+    "Witness": "गवाह",
+    "Hearing": "सुनवाई",
+    "Checklist": "चेकलिस्ट",
+    "Priority": "प्राथमिकता",
+    "Pinned": "पिन किया गया",
+    "Archived": "संग्रहीत",
+    "Search notes...": "नोट्स खोजें...",
+    "Relevant Cases": "प्रासंगिक मामले",
+    "Supreme Court": "उच्चतम न्यायालय",
+    "High Court": "उच्च न्यायालय",
+    "Citation": "साइटेशन (Citation)",
+    "Ratio": "अनुपात (Ratio)",
+    "Judgment": "निर्णय",
+    "Bench": "पीठ (Bench)",
+    "Search precedents...": "कानूनी मिसालें खोजें...",
+    "Create Task": "कार्य बनाएं",
+    "In Progress": "प्रगति पर",
+    "Due Today": "आज देय",
+    "Overdue": "देय तिथि समाप्त",
+    "Reminder": "अनुस्मारक",
+    "Search tasks...": "कार्य खोजें...",
+    "Retry": "पुनः प्रयास करें",
+    "Analyze": "विश्लेषण करें",
+    "Edit": "संपादित करें",
+    "Merge": "मर्ज करें",
+    "Open": "खोलें",
+    "Save": "सहेजें",
+    "Cancel": "रद्द करें",
+    "Continue": "जारी रखें",
+    "Back": "वापस",
+    "Next": "अगला",
+    "Critical Risk": "गंभीर जोखिम",
+    "Case Assistant": "केस सहायक",
+    "Suggestions": "सुझाव",
+    "Case Analysis": "मामले का विश्लेषण",
+    "Generated Responses": "जेनरेट की गई प्रतिक्रियाएं",
+    "Citations": "साइटेशन (Citations)",
+    "Hide AI": "एआई छुपाएं",
+    "Show AI": "एआई दिखाएं",
+    "Open Case": "मामला खोलें",
+    "No cases found": "कोई मामला नहीं मिला",
+    "Create your first case to begin managing legal matters.": "कानूनी मामलों को प्रबंधित करना शुरू करने के लिए अपना पहला मामला बनाएं।"
+  }
+};
 
+const tGlobal = (str, lang) => {
+  if (lang === 'Hindi') {
+    return localDashboardTranslations.Hindi[str] || localDashboardTranslations.Hindi[str.trim()] || str;
+  }
+  return str;
+};
 
+const LocalizedContainer = ({ children, lang }) => {
+  useEffect(() => {
+    if (lang !== 'Hindi') return;
+
+    const translateElement = (node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.nodeValue;
+        if (text && text.trim()) {
+          const trimmed = text.trim();
+          const translation = localDashboardTranslations.Hindi[trimmed] || localDashboardTranslations.Hindi[trimmed.replace(/[:.]/g, '')];
+          if (translation) {
+            node.nodeValue = text.replace(trimmed, translation);
+          }
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        if (node.placeholder) {
+          const translation = localDashboardTranslations.Hindi[node.placeholder.trim()];
+          if (translation) {
+            node.placeholder = translation;
+          }
+        }
+        if (node.title) {
+          const translation = localDashboardTranslations.Hindi[node.title.trim()];
+          if (translation) {
+            node.title = translation;
+          }
+        }
+        node.childNodes.forEach(translateElement);
+      }
+    };
+
+    translateElement(document.body);
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach(translateElement);
+      });
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    return () => observer.disconnect();
+  }, [lang, children]);
+
+  return <>{children}</>;
+};
 
 const QUICK_AI_ACTIONS = [
   { name: 'Draft Legal Notice', icon: 'FileText', prompt: 'Draft a formal legal notice based on this case facts and provisions.' },
@@ -67,14 +560,14 @@ const getActionIcon = (iconName) => {
 const highlightLegalTerms = (text) => {
   if (!text) return "";
   const terms = [
-    "Section 420 IPC", 
-    "Transfer of Property Act", 
+    "Section 420 IPC",
+    "Transfer of Property Act",
     "Indian Evidence Act",
-    "Prayer", 
-    "Evidence", 
-    "Facts", 
-    "Timeline", 
-    "Arguments", 
+    "Prayer",
+    "Evidence",
+    "Facts",
+    "Timeline",
+    "Arguments",
     "Relief"
   ];
   let formatted = text;
@@ -159,7 +652,7 @@ const StatusBadge = ({ status }) => {
 const QuickActionsModal = ({ visible, onClose, phoneNumber, countryCode }) => {
   if (!visible) return null;
   const fullPhone = phoneNumber ? `${countryCode || '+91'}${phoneNumber}` : null;
-  
+
   const handleCall = () => {
     console.log("Button Clicked: Call");
     console.log("Icon Clicked: Call");
@@ -291,12 +784,12 @@ ModuleCard.displayName = 'ModuleCard';
 // â”€â”€â”€ Module Router Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ALL_MODULES = [
   { id: 'legal_argument_builder', name: 'Argument Builder', desc: 'Draft courtroom strategies and arguments', icon: '⚖️ï¸' },
-  { id: 'legal_precedents',       name: 'Legal Precedent',  desc: 'AI precedent and citation explorer',       icon: 'ðŸ›ï¸' },
-  { id: 'legal_draft_maker',      name: 'Draft Maker',      desc: 'Generate court-ready legal drafts',        icon: 'ðŸ“' },
-  { id: 'legal_evidence_checker', name: 'Evidence Analysis',desc: 'Analyze legal documents and evidence',     icon: 'ðŸ”' },
-  { id: 'legal_case_predictor',   name: 'Case Predictor',   desc: 'Judicial scanner and forecast',            icon: 'ðŸŽ¯' },
-  { id: 'legal_contract_analyzer',name: 'Contract Review',  desc: 'Agreement review and compliance',          icon: 'ðŸ“‹' },
-  { id: 'legal_strategy_engine',  name: 'Strategy Engine',  desc: 'Litigation Roadmap & Tactical Suggestions',icon: 'ðŸ—ºï¸' },
+  { id: 'legal_precedents', name: 'Legal Precedent', desc: 'AI precedent and citation explorer', icon: 'ðŸ›ï¸' },
+  { id: 'legal_draft_maker', name: 'Draft Maker', desc: 'Generate court-ready legal drafts', icon: 'ðŸ“' },
+  { id: 'legal_evidence_checker', name: 'Evidence Analysis', desc: 'Analyze legal documents and evidence', icon: 'ðŸ”' },
+  { id: 'legal_case_predictor', name: 'Case Predictor', desc: 'Judicial scanner and forecast', icon: 'ðŸŽ¯' },
+  { id: 'legal_contract_analyzer', name: 'Contract Review', desc: 'Agreement review and compliance', icon: 'ðŸ“‹' },
+  { id: 'legal_strategy_engine', name: 'Strategy Engine', desc: 'Litigation Roadmap & Tactical Suggestions', icon: 'ðŸ—ºï¸' },
 ];
 
 const ModuleRouterModal = ({ visible, onClose, caseData, onLaunchModule, activeModuleId }) => {
@@ -617,8 +1110,8 @@ const HearingModal = ({ visible, onClose, onSave, editingHearing }) => {
           {/* Row 1: Hearing Type */}
           <div>
             <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 block font-bold">Hearing Type</label>
-            <select 
-              value={form.hearingType} 
+            <select
+              value={form.hearingType}
               onChange={e => setForm({ ...form, hearingType: e.target.value })}
               className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white"
             >
@@ -632,21 +1125,21 @@ const HearingModal = ({ visible, onClose, onSave, editingHearing }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 block font-bold">Date</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="e.g. 15 Jul 2026"
-                value={form.date} 
+                value={form.date}
                 onChange={e => setForm({ ...form, date: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white" 
+                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white"
               />
             </div>
             <div>
               <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 block font-bold">Time</label>
-              <input 
-                type="text" 
-                value={form.time} 
+              <input
+                type="text"
+                value={form.time}
                 onChange={e => setForm({ ...form, time: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white" 
+                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white"
               />
             </div>
           </div>
@@ -655,20 +1148,20 @@ const HearingModal = ({ visible, onClose, onSave, editingHearing }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 block font-bold">Court</label>
-              <input 
-                value={form.court} 
-                onChange={e => setForm({ ...form, court: e.target.value })} 
+              <input
+                value={form.court}
+                onChange={e => setForm({ ...form, court: e.target.value })}
                 placeholder="e.g. District Court"
-                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white" 
+                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white"
               />
             </div>
             <div>
               <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 block font-bold">Court Room</label>
-              <input 
-                value={form.courtRoom} 
-                onChange={e => setForm({ ...form, courtRoom: e.target.value })} 
+              <input
+                value={form.courtRoom}
+                onChange={e => setForm({ ...form, courtRoom: e.target.value })}
                 placeholder="e.g. Courtroom 12"
-                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white" 
+                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white"
               />
             </div>
           </div>
@@ -677,17 +1170,17 @@ const HearingModal = ({ visible, onClose, onSave, editingHearing }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 block font-bold">Judge</label>
-              <input 
-                value={form.judge} 
-                onChange={e => setForm({ ...form, judge: e.target.value })} 
+              <input
+                value={form.judge}
+                onChange={e => setForm({ ...form, judge: e.target.value })}
                 placeholder="e.g. Justice R. Sharma"
-                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white" 
+                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white"
               />
             </div>
             <div>
               <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 block font-bold">Status</label>
-              <select 
-                value={form.status} 
+              <select
+                value={form.status}
                 onChange={e => setForm({ ...form, status: e.target.value })}
                 className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white"
               >
@@ -701,36 +1194,36 @@ const HearingModal = ({ visible, onClose, onSave, editingHearing }) => {
           {/* Row 5: Purpose */}
           <div>
             <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 block font-bold">Purpose / Summary</label>
-            <input 
-              value={form.purpose} 
-              onChange={e => setForm({ ...form, purpose: e.target.value })} 
+            <input
+              value={form.purpose}
+              onChange={e => setForm({ ...form, purpose: e.target.value })}
               placeholder="e.g. Cross examination of Plaintiff Witness"
-              className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white" 
+              className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white"
             />
           </div>
 
           {/* Row 6: Notes */}
           <div>
             <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 block font-bold">Notes / AI Prep Summary</label>
-            <textarea 
-              value={form.notes} 
-              onChange={e => setForm({ ...form, notes: e.target.value })} 
+            <textarea
+              value={form.notes}
+              onChange={e => setForm({ ...form, notes: e.target.value })}
               placeholder="Private observations, checklist items, or notes..."
               rows={3}
-              className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white resize-none" 
+              className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs font-semibold outline-none text-slate-800 dark:text-white resize-none"
             />
           </div>
         </div>
 
         <div className="mt-5 pt-3 border-t border-slate-100 dark:border-zinc-850 flex gap-3">
-          <button 
+          <button
             type="button"
-            onClick={onClose} 
+            onClick={onClose}
             className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
           >
             Cancel
           </button>
-          <button 
+          <button
             type="button"
             onClick={() => onSave(form, editingHearing)}
             className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm transition-all"
@@ -780,7 +1273,7 @@ const UploadCourtOrderModal = ({ visible, onClose, hearing, onUpload }) => {
   const handleSubmit = async () => {
     if (!file) return;
     setIsUploading(true);
-    
+
     // Simulate upload progress
     for (let p = 10; p <= 100; p += 30) {
       setProgress(p);
@@ -796,7 +1289,7 @@ const UploadCourtOrderModal = ({ visible, onClose, hearing, onUpload }) => {
     <div className="fixed inset-0 z-[120000] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-[#1a2540] w-full sm:w-[460px] sm:rounded-3xl rounded-t-3xl p-6 shadow-2xl border border-slate-200 dark:border-zinc-800/80" onClick={e => e.stopPropagation()}>
-        
+
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100 dark:border-zinc-850">
           <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
             Upload Court Order
@@ -830,21 +1323,21 @@ const UploadCourtOrderModal = ({ visible, onClose, hearing, onUpload }) => {
               </p>
               <div className="flex items-center gap-4 text-xs font-bold text-slate-700 dark:text-slate-300">
                 <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input 
-                    type="radio" 
-                    name="uploadMode" 
-                    checked={uploadMode === 'keep'} 
-                    onChange={() => setUploadMode('keep')} 
+                  <input
+                    type="radio"
+                    name="uploadMode"
+                    checked={uploadMode === 'keep'}
+                    onChange={() => setUploadMode('keep')}
                     className="accent-indigo-600"
                   />
                   Keep Both
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input 
-                    type="radio" 
-                    name="uploadMode" 
-                    checked={uploadMode === 'replace'} 
-                    onChange={() => setUploadMode('replace')} 
+                  <input
+                    type="radio"
+                    name="uploadMode"
+                    checked={uploadMode === 'replace'}
+                    onChange={() => setUploadMode('replace')}
                     className="accent-indigo-600"
                   />
                   Replace Existing
@@ -855,18 +1348,18 @@ const UploadCourtOrderModal = ({ visible, onClose, hearing, onUpload }) => {
 
           {/* File Selector Dropzone */}
           {!file ? (
-            <div 
+            <div
               onDragOver={e => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => document.getElementById('order-file-picker').click()}
               className="border-2 border-dashed border-indigo-200 dark:border-zinc-800 hover:border-[#4F46E5] dark:hover:border-indigo-400 bg-indigo-50/10 dark:bg-black/5 rounded-2xl p-6 text-center cursor-pointer transition-colors"
             >
-              <input 
-                type="file" 
-                id="order-file-picker" 
+              <input
+                type="file"
+                id="order-file-picker"
                 accept=".pdf,.doc,.docx"
                 onChange={handleFileChange}
-                className="hidden" 
+                className="hidden"
               />
               <UploadCloud size={28} className="text-[#4F46E5] mx-auto mb-2 opacity-80" />
               <p className="text-xs font-bold text-slate-805 dark:text-white">Choose a court order document</p>
@@ -883,9 +1376,9 @@ const UploadCourtOrderModal = ({ visible, onClose, hearing, onUpload }) => {
                   <p className="text-[10px] text-slate-400 font-semibold">{(file.size / 1024).toFixed(1)} KB</p>
                 </div>
               </div>
-              <button 
-                type="button" 
-                onClick={() => setFile(null)} 
+              <button
+                type="button"
+                onClick={() => setFile(null)}
                 className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-400 transition-colors"
               >
                 <X size={14} />
@@ -908,15 +1401,15 @@ const UploadCourtOrderModal = ({ visible, onClose, hearing, onUpload }) => {
         </div>
 
         <div className="mt-5 pt-3 border-t border-slate-105 dark:border-zinc-850 flex gap-3">
-          <button 
+          <button
             type="button"
-            onClick={onClose} 
+            onClick={onClose}
             disabled={isUploading}
             className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
           >
             Cancel
           </button>
-          <button 
+          <button
             type="button"
             onClick={handleSubmit}
             disabled={!file || isUploading}
@@ -978,7 +1471,7 @@ const DocViewerModal = ({ visible, onClose, doc }) => {
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt);
   const isPdf = fileExt === 'pdf';
   const isText = ['txt', 'csv', 'json', 'md', 'xml'].includes(fileExt);
-  
+
   // Office files
   const isOffice = ['docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt'].includes(fileExt);
 
@@ -1045,12 +1538,11 @@ const DocViewerModal = ({ visible, onClose, doc }) => {
   return (
     <div className="fixed inset-0 z-[120000] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div 
-        className={`relative bg-white dark:bg-[#151f32] rounded-2xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${
-          isFullscreen 
-            ? 'w-[98vw] h-[96vh]' 
+      <div
+        className={`relative bg-white dark:bg-[#151f32] rounded-2xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${isFullscreen
+            ? 'w-[98vw] h-[96vh]'
             : 'w-full max-w-4xl h-[75vh]'
-        }`} 
+          }`}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -1091,10 +1583,10 @@ const DocViewerModal = ({ visible, onClose, doc }) => {
           <div className="flex-1 overflow-auto p-4 flex items-center justify-center min-h-0">
             {isImage ? (
               <div className="max-w-full max-h-full flex items-center justify-center overflow-auto p-2">
-                <img 
-                  src={doc.uri} 
-                  alt={doc.name} 
-                  className="max-w-full max-h-full object-contain rounded-lg shadow-sm transition-all" 
+                <img
+                  src={doc.uri}
+                  alt={doc.name}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-sm transition-all"
                   style={{ transform: `scale(${zoom / 100})` }}
                 />
               </div>
@@ -1260,25 +1752,39 @@ const DocViewerModal = ({ visible, onClose, doc }) => {
 
 // â”€â”€â”€ Case Detail View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewRoadmap, onLaunchModuleWithCase, onUpdateCase }) => {
-  const { tLegal } = useLanguage();
+  const { toolkitLanguage, setToolkitLanguage, tLegal } = useLanguage();
+  const t = useCallback((str) => tGlobal(str, toolkitLanguage), [toolkitLanguage]);
   const tabsList = [
-    { id: 'overview', name: 'Overview', icon: LayoutDashboard },
-    { id: 'timeline', name: 'Timeline', icon: History },
-    { id: 'hearings', name: 'Hearings', icon: Gavel },
-    { id: 'parties', name: 'Parties', icon: Users },
-    { id: 'documents', name: 'Documents', icon: FileText },
-    { id: 'evidence', name: 'Evidence Vault', icon: FileSearch },
-    { id: 'research', name: 'Research & Laws', icon: BookOpen },
-    { id: 'drafts', name: 'Drafts', icon: ScrollText },
-    { id: 'contracts', name: 'Contracts', icon: ClipboardList },
-    { id: 'arguments', name: 'Arguments', icon: Target },
-    { id: 'notes', name: 'Notes', icon: FileText },
-    { id: 'precedents', name: 'Precedents', icon: Bookmark },
-    { id: 'tasks', name: 'Tasks', icon: ListTodo },
+    { id: 'overview', name: t('Overview'), icon: LayoutDashboard },
+    { id: 'timeline', name: t('Timeline'), icon: History },
+    { id: 'hearings', name: t('Hearings'), icon: Gavel },
+    { id: 'parties', name: t('Parties'), icon: Users },
+    { id: 'documents', name: t('Documents'), icon: FileText },
+    { id: 'evidence', name: t('Evidence Vault'), icon: FileSearch },
+    { id: 'research', name: t('Research & Laws'), icon: BookOpen },
+    { id: 'drafts', name: t('Drafts'), icon: ScrollText },
+    { id: 'contracts', name: t('Contracts'), icon: ClipboardList },
+    { id: 'arguments', name: t('Arguments'), icon: Target },
+    { id: 'notes', name: t('Notes'), icon: FileText },
+    { id: 'precedents', name: t('Precedents'), icon: Bookmark },
+    { id: 'tasks', name: t('Tasks'), icon: ListTodo },
   ];
   const [activeTab, setActiveTab] = useState('overview');
-  const [caseData, _setCaseData] = useState(item);
-  
+  const [dbCaseData, _setCaseData] = useState(item);
+  const [dbTasks, setDbTasks] = useState([]);
+  const [dbTimelineEvents, setDbTimelineEvents] = useState([]);
+  const setTasks = setDbTasks;
+  const setTimelineEvents = setDbTimelineEvents;
+
+  const [translatedCaseData, setTranslatedCaseData] = useState(null);
+  const [translatedTimelineEvents, setTranslatedTimelineEvents] = useState([]);
+  const [translatedTasks, setTranslatedTasks] = useState([]);
+  const [isTranslatingWorkspace, setIsTranslatingWorkspace] = useState(false);
+
+  const caseData = (toolkitLanguage === 'Hindi' && translatedCaseData) ? translatedCaseData : dbCaseData;
+  const timelineEvents = (toolkitLanguage === 'Hindi' && translatedTimelineEvents.length > 0) ? translatedTimelineEvents : dbTimelineEvents;
+  const tasks = (toolkitLanguage === 'Hindi' && translatedTasks.length > 0) ? translatedTasks : dbTasks;
+
   const setCaseData = useCallback((val) => {
     _setCaseData(prev => {
       const next = typeof val === 'function' ? val(prev) : val;
@@ -1291,18 +1797,18 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
 
   // Migration Effect for Isolated Collections (Documents, Evidence, Contracts)
   useEffect(() => {
-    if (caseData && (!caseData.contracts || !caseData.evidence)) {
-      const allDocs = caseData.documents || [];
-      const migratedContracts = caseData.contracts || allDocs.filter(d => d.isContract || d.category === 'Contract' || d.folder === 'Contracts');
-      const migratedEvidence = caseData.evidence || allDocs.filter(d => d.category === 'Evidence' || d.isEvidence || d.folder === 'Evidence');
-      const migratedDocs = allDocs.filter(d => 
+    if (dbCaseData && (!dbCaseData.contracts || !dbCaseData.evidence)) {
+      const allDocs = dbCaseData.documents || [];
+      const migratedContracts = dbCaseData.contracts || allDocs.filter(d => d.isContract || d.category === 'Contract' || d.folder === 'Contracts');
+      const migratedEvidence = dbCaseData.evidence || allDocs.filter(d => d.category === 'Evidence' || d.isEvidence || d.folder === 'Evidence');
+      const migratedDocs = allDocs.filter(d =>
         !(d.isContract || d.category === 'Contract' || d.folder === 'Contracts') &&
         !(d.category === 'Evidence' || d.isEvidence || d.folder === 'Evidence')
       );
-      
+
       const runMigration = async () => {
         try {
-          await legalService.updateCase(caseData.id || caseData._id, {
+          await legalService.updateCase(dbCaseData.id || dbCaseData._id, {
             documents: migratedDocs,
             contracts: migratedContracts,
             evidence: migratedEvidence
@@ -1320,7 +1826,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
       };
       runMigration();
     }
-  }, [caseData?.id, caseData?._id]);
+  }, [dbCaseData?.id, dbCaseData?._id]);
 
   const handleDropUpload = async (e) => {
     e.preventDefault();
@@ -1331,8 +1837,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
   };
 
   const [isEditingFacts, setIsEditingFacts] = useState(false);
-  const [tasks, setTasks] = useState([]);
-  const [timelineEvents, setTimelineEvents] = useState([]);
+
   const [timelineSearchQuery, setTimelineSearchQuery] = useState('');
   const [timelineFilter, setTimelineFilter] = useState('all');
   const [showSuggestedEvents, setShowSuggestedEvents] = useState(false);
@@ -1377,13 +1882,173 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const { translateText } = useOutputLanguage('legal_workspace_detail');
+
+
+
+  const translateDynamicText = useCallback(async (text) => {
+    if (!text || typeof text !== 'string') return text;
+    const hasHindi = /[\u0900-\u097F]/.test(text);
+    if (hasHindi) return text;
+    try {
+      return await translateText(text);
+    } catch (err) {
+      console.error("[Workspace translateDynamicText Error]", err);
+      return text;
+    }
+  }, [translateText]);
+
+  useEffect(() => {
+    if (toolkitLanguage === 'Hindi') {
+      const runTranslation = async () => {
+        setIsTranslatingWorkspace(true);
+        try {
+          let transSummary = caseData?.summary;
+          if (transSummary) {
+            transSummary = await translateDynamicText(transSummary);
+          }
+
+          let transRiskLevel = caseData?.intelligence?.riskLevel;
+          let transRiskReason = caseData?.intelligence?.riskReason;
+          if (transRiskReason) {
+            transRiskReason = await translateDynamicText(transRiskReason);
+          }
+          
+          let transWeakPoints = [];
+          if (caseData?.intelligence?.weakPoints) {
+            transWeakPoints = await Promise.all(
+              caseData.intelligence.weakPoints.map(wp => translateDynamicText(wp))
+            );
+          }
+
+          let transOpponentStrategies = [];
+          if (caseData?.intelligence?.opponentStrategies) {
+            transOpponentStrategies = await Promise.all(
+              caseData.intelligence.opponentStrategies.map(os => translateDynamicText(os))
+            );
+          }
+
+          let transStrategyRecommendations = [];
+          if (caseData?.intelligence?.strategyRecommendations) {
+            transStrategyRecommendations = await Promise.all(
+              caseData.intelligence.strategyRecommendations.map(sr => translateDynamicText(sr))
+            );
+          }
+
+          let transTimeline = [];
+          if (caseData?.timelineEvents) {
+            transTimeline = await Promise.all(
+              caseData.timelineEvents.map(async (evt) => ({
+                ...evt,
+                title: await translateDynamicText(evt.title),
+                description: await translateDynamicText(evt.description)
+              }))
+            );
+          }
+
+          let transSuggestions = [];
+          if (caseData?.timelineSuggestions) {
+            transSuggestions = await Promise.all(
+              caseData.timelineSuggestions.map(async (item) => ({
+                ...item,
+                title: await translateDynamicText(item.title),
+                description: await translateDynamicText(item.description)
+              }))
+            );
+          }
+
+          let transDeadlines = [];
+          if (caseData?.timelineDeadlines) {
+            transDeadlines = await Promise.all(
+              caseData.timelineDeadlines.map(async (item) => ({
+                ...item,
+                title: await translateDynamicText(item.title),
+                description: await translateDynamicText(item.description)
+              }))
+            );
+          }
+
+          let transMissingDocuments = [];
+          if (caseData?.timelineMissingDocuments) {
+            transMissingDocuments = await Promise.all(
+              caseData.timelineMissingDocuments.map(async (item) => ({
+                ...item,
+                title: await translateDynamicText(item.title),
+                description: await translateDynamicText(item.description)
+              }))
+            );
+          }
+
+          let transRelief = caseData?.reliefGoals;
+          if (transRelief) {
+            transRelief = await translateDynamicText(transRelief);
+          }
+
+          setTranslatedCaseData({
+            ...caseData,
+            summary: transSummary,
+            reliefGoals: transRelief,
+            intelligence: {
+              ...caseData?.intelligence,
+              riskLevel: transRiskLevel,
+              riskReason: transRiskReason,
+              weakPoints: transWeakPoints,
+              opponentStrategies: transOpponentStrategies,
+              strategyRecommendations: transStrategyRecommendations
+            },
+            timelineEvents: transTimeline,
+            timelineSuggestions: transSuggestions,
+            timelineDeadlines: transDeadlines,
+            timelineMissingDocuments: transMissingDocuments
+          });
+
+          if (timelineEvents && timelineEvents.length > 0) {
+            const transEvts = await Promise.all(
+              timelineEvents.map(async (evt) => ({
+                ...evt,
+                title: await translateDynamicText(evt.title),
+                description: await translateDynamicText(evt.description)
+              }))
+            );
+            setTranslatedTimelineEvents(transEvts);
+          }
+
+          if (tasks && tasks.length > 0) {
+            const transTs = await Promise.all(
+              tasks.map(async (t) => ({
+                ...t,
+                title: await translateDynamicText(t.title),
+                details: await translateDynamicText(t.details)
+              }))
+            );
+            setTranslatedTasks(transTs);
+          }
+
+        } catch (err) {
+          console.error("[Workspace Translation Error]", err);
+        } finally {
+          setIsTranslatingWorkspace(false);
+        }
+      };
+      runTranslation();
+    } else {
+      setTranslatedCaseData(null);
+      setTranslatedTimelineEvents([]);
+      setTranslatedTasks([]);
+    }
+  }, [toolkitLanguage, caseData, timelineEvents, tasks, translateDynamicText]);
+
+  const displayCaseData = (toolkitLanguage === 'Hindi' && translatedCaseData) ? translatedCaseData : caseData;
+  const displayTimelineEvents = (toolkitLanguage === 'Hindi' && translatedTimelineEvents.length > 0) ? translatedTimelineEvents : timelineEvents;
+  const displayTasks = (toolkitLanguage === 'Hindi' && translatedTasks.length > 0) ? translatedTasks : tasks;
+
   const [activeActionsMenuId, setActiveActionsMenuId] = useState(null);
   const [menuTriggerRect, setMenuTriggerRect] = useState(null);
   const [deleteConfirmContract, setDeleteConfirmContract] = useState(null);
   const [focusedOptionIndex, setFocusedOptionIndex] = useState(-1);
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(false);
-  
+
   // Precedents States
   const [precedentsSearchQuery, setPrecedentsSearchQuery] = useState('');
   const [precedentsFilterCourt, setPrecedentsFilterCourt] = useState('All');
@@ -1562,7 +2227,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
     try {
       const analyzed = await legalService.analyzeUploadedDocument(caseData.id || caseData._id, docObj, caseData);
       const updatedDocs = (caseData.contracts || []).map(d => d.id === docObj.id ? analyzed : d);
-      
+
       await legalService.updateCase(caseData.id || caseData._id, { contracts: updatedDocs });
       setCaseData(prev => ({ ...prev, contracts: updatedDocs }));
       setSelectedContractDetails(analyzed);
@@ -1781,7 +2446,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedPrecedent, setSelectedPrecedent] = useState(null);
-  
+
 
 
   const [showAiAssistant, setShowAiAssistant] = useState(() => window.innerWidth >= 768);
@@ -1948,7 +2613,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
 
   const filteredSessions = useMemo(() => {
     const query = historySearchQuery.toLowerCase();
-    let items = sidebarSessions.filter(s => 
+    let items = sidebarSessions.filter(s =>
       (s.title || '').toLowerCase().includes(query)
     );
     return items.sort((a, b) => {
@@ -1992,19 +2657,18 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
     const displayTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     return (
-      <div 
-        className={`group relative w-full p-3 rounded-xl border transition-all cursor-pointer flex flex-col gap-1.5 ${
-          isActive 
-            ? 'bg-indigo-50/40 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/40 text-[#4F46E5]' 
+      <div
+        className={`group relative w-full p-3 rounded-xl border transition-all cursor-pointer flex flex-col gap-1.5 ${isActive
+            ? 'bg-indigo-50/40 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/40 text-[#4F46E5]'
             : 'bg-white dark:bg-zinc-800/80 border-slate-100 dark:border-zinc-800/80 text-slate-750 dark:text-slate-350 hover:bg-slate-50/50 dark:hover:bg-zinc-800/40 hover:border-slate-200 dark:hover:border-zinc-700'
-        }`}
+          }`}
         onClick={() => !isEditing && onSelect()}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             {isEditing ? (
               <form onSubmit={handleSaveRename} className="flex items-center gap-1.5 w-full" onClick={e => e.stopPropagation()}>
-                <input 
+                <input
                   type="text"
                   value={renameVal}
                   onChange={(e) => setRenameVal(e.target.value)}
@@ -2023,58 +2687,58 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
               </div>
             )}
           </div>
-          
+
           {!isEditing && (
             <div className="relative shrink-0 animate-in fade-in" onClick={e => e.stopPropagation()}>
-              <button 
+              <button
                 onClick={() => setShowActionsMenu(!showActionsMenu)}
                 className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 transition-colors cursor-pointer border-none bg-transparent"
                 aria-label="Conversation actions"
               >
                 <MoreVertical size={13} />
               </button>
-              
+
               {showActionsMenu && (
-                <div 
+                <div
                   ref={actionsMenuRef}
                   className="absolute right-0 top-full mt-1 z-[120000] w-36 bg-white dark:bg-zinc-850 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-xl p-1.5 space-y-0.5 text-left"
                 >
-                  <button 
+                  <button
                     onClick={() => { onSelect(); setShowActionsMenu(false); }}
                     className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800/50 rounded-lg text-[10px] font-bold text-slate-700 dark:text-gray-200 transition-colors border-none bg-transparent cursor-pointer text-left"
                   >
                     <Eye size={12} className="text-slate-400" />
                     <span>Resume Chat</span>
                   </button>
-                  <button 
+                  <button
                     onClick={() => { setIsEditing(true); setShowActionsMenu(false); }}
                     className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800/50 rounded-lg text-[10px] font-bold text-slate-700 dark:text-gray-200 transition-colors border-none bg-transparent cursor-pointer text-left"
                   >
                     <Edit2 size={12} className="text-slate-400" />
                     <span>Rename</span>
                   </button>
-                  <button 
+                  <button
                     onClick={() => { onPin(); setShowActionsMenu(false); }}
                     className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800/50 rounded-lg text-[10px] font-bold text-slate-700 dark:text-gray-200 transition-colors border-none bg-transparent cursor-pointer text-left"
                   >
                     <Pin size={12} className="text-slate-400" />
                     <span>{isPinned ? 'Unpin' : 'Pin'}</span>
                   </button>
-                  <button 
+                  <button
                     onClick={() => { onDuplicate(); setShowActionsMenu(false); }}
                     className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800/50 rounded-lg text-[10px] font-bold text-slate-700 dark:text-gray-200 transition-colors border-none bg-transparent cursor-pointer text-left"
                   >
                     <Copy size={12} className="text-slate-400" />
                     <span>Duplicate</span>
                   </button>
-                  <button 
+                  <button
                     onClick={() => { onExport(); setShowActionsMenu(false); }}
                     className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800/50 rounded-lg text-[10px] font-bold text-slate-700 dark:text-gray-200 transition-colors border-none bg-transparent cursor-pointer text-left"
                   >
                     <Download size={12} className="text-slate-400" />
                     <span>Export</span>
                   </button>
-                  <button 
+                  <button
                     onClick={() => { onDelete(); setShowActionsMenu(false); }}
                     className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-[10px] font-bold text-red-500 transition-colors border-none bg-transparent cursor-pointer text-left"
                   >
@@ -2124,7 +2788,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
       if (focusableElements && focusableElements.length > 0) {
         const firstElement = focusableElements[0];
         const lastElement = focusableElements[focusableElements.length - 1];
-        
+
         const handleTab = (e) => {
           if (e.key === 'Tab') {
             if (e.shiftKey) {
@@ -2150,7 +2814,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
       <AnimatePresence>
         {showSidebarHistory && (
           <div className="fixed inset-0 z-50 flex items-end md:items-stretch md:justify-end select-none">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -2158,18 +2822,17 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
               onClick={() => setShowSidebarHistory(false)}
               className="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-0"
             />
-            
+
             <motion.div
               ref={drawerRef}
               initial={isMobile ? { y: "100%" } : { x: "100%" }}
               animate={isMobile ? { y: 0 } : { x: 0 }}
               exit={isMobile ? { y: "100%" } : { x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className={`relative z-10 bg-white dark:bg-zinc-900 shadow-2xl flex flex-col overflow-hidden ${
-                isMobile 
-                ? 'w-full h-[85vh] rounded-t-3xl pb-safe' 
-                : 'w-[400px] h-full border-l border-[#E5E7EB] dark:border-zinc-800'
-              }`}
+              className={`relative z-10 bg-white dark:bg-zinc-900 shadow-2xl flex flex-col overflow-hidden ${isMobile
+                  ? 'w-full h-[85vh] rounded-t-3xl pb-safe'
+                  : 'w-[400px] h-full border-l border-[#E5E7EB] dark:border-zinc-800'
+                }`}
             >
               <div className="p-4 border-b border-[#E5E7EB] dark:border-zinc-800 shrink-0 bg-white dark:bg-zinc-900 select-none">
                 <div className="flex items-center justify-between mb-3">
@@ -2185,7 +2848,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
                     <X size={16} />
                   </button>
                 </div>
-                
+
                 <div className="relative">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -2196,7 +2859,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
                     className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-800 rounded-xl text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-[#4F46E5] transition-colors"
                   />
                   {historySearchQuery && (
-                    <button 
+                    <button
                       onClick={() => setHistorySearchQuery('')}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer"
                     >
@@ -2220,7 +2883,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
                     const sId = session.chat_id || session.sessionId;
                     const isActive = sId === activeSessionId;
                     return (
-                      <HistoryItem 
+                      <HistoryItem
                         key={sId}
                         session={session}
                         isActive={isActive}
@@ -2292,7 +2955,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
   const [isRouterVisible, setIsRouterVisible] = useState(false);
   const [activeModuleId, setActiveModuleId] = useState(null);
   const [quickActionsPhone, setQuickActionsPhone] = useState(null);
-  
+
   const [isDocViewerOpen, setIsDocViewerOpen] = useState(false);
   const [activeDoc, setActiveDoc] = useState(null);
 
@@ -2575,16 +3238,16 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
   };
 
   const getFactsForAnalysis = () => {
-    if (notesText && 
-        !notesText.includes("AI Analysis Error") && 
-        !notesText.includes("AI Request Failed") && 
-        !notesText.includes("__AI_ANALYSIS_FAILED__")) {
+    if (notesText &&
+      !notesText.includes("AI Analysis Error") &&
+      !notesText.includes("AI Request Failed") &&
+      !notesText.includes("__AI_ANALYSIS_FAILED__")) {
       return notesText;
     }
-    if (caseData?.description && 
-        !caseData.description.includes("AI Analysis Error") && 
-        !caseData.description.includes("AI Request Failed") && 
-        !caseData.description.includes("__AI_ANALYSIS_FAILED__")) {
+    if (caseData?.description &&
+      !caseData.description.includes("AI Analysis Error") &&
+      !caseData.description.includes("AI Request Failed") &&
+      !caseData.description.includes("__AI_ANALYSIS_FAILED__")) {
       return caseData.description;
     }
     return caseData?.title || caseData?.name || '';
@@ -2621,7 +3284,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
       if (analyzed.description) {
         setNotesText(analyzed.description);
       }
-      
+
       const winProb = analyzed.intelligence?.winProbability || analyzed.win_probability || 50;
       setAiMessages(prev => [...prev, {
         id: Date.now().toString(),
@@ -2691,7 +3354,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
     try {
       // Use permanent base64 URI so file persists after refresh/logout
       const fileBase64Uri = await fileToBase64(file);
-      
+
       const newDoc = {
         id: `doc_order_${Date.now()}`,
         name: file.name,
@@ -2704,7 +3367,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
         ocrStatus: 'Success (OCR Done)',
         aiProcessed: 'Extracted successfully',
         facts: `Court Order uploaded for ${hearing.stage || 'Hearing'} date: ${hearing.date}. Directions: Maintain status quo. Summons issued.`,
-        
+
         // permanent association
         linkedHearingId: hearing.id,
         linkedHearingType: hearing.stage || 'Court Appearance',
@@ -2759,7 +3422,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
       };
 
       await legalService.updateCase(caseData.id || caseData._id, updatedCaseData);
-      
+
       // Invalidate SPA cache
       if (window.__singleProjectCache) delete window.__singleProjectCache[caseData.id || caseData._id];
       const refreshedCase = await apiService.getProject(caseData.id || caseData._id);
@@ -2792,9 +3455,9 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
         caseId: caseData.id || caseData._id,
         caseTitle: caseData.title || caseData.name
       });
-      
+
       toast.success(`Scheduled next hearing for ${nextDate}`);
-      
+
       // Reload
       if (window.__singleProjectCache) delete window.__singleProjectCache[caseData.id || caseData._id];
       const refreshedCase = await apiService.getProject(caseData.id || caseData._id);
@@ -2853,7 +3516,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
       const prompt = `Draft a comprehensive chronological legal case summary based on the case name: "${caseData.title || caseData.name || 'N/A'}", client details: "${caseData.clientName || 'N/A'}", opponent: "${caseData.opponentName || 'N/A'}", court: "${caseData.courtName || 'N/A'}". Include specific events and dates in format DD MMM YYYY (e.g. 15 Jan 2025, 20 Apr 2025) so that we can build a timeline from it.`;
       const systemInstruction = "You are a professional legal counsel assistant. Draft a realistic, coherent chronological case summary based on the details. Return ONLY the drafted summary text.";
       const res = await generateChatResponse([], prompt, systemInstruction, null, 'English');
-      
+
       let summaryText = '';
       if (typeof res === 'string') summaryText = res;
       else if (res.reply) summaryText = res.reply;
@@ -2906,7 +3569,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
     try {
       let targetField = 'documents';
       let defaultCategory = 'Document';
-      
+
       if (activeTab === 'evidence') {
         targetField = 'evidence';
         defaultCategory = 'Evidence';
@@ -2918,10 +3581,10 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
       let updatedDocs = [...(caseData[targetField] || [])];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        
+
         setUploadProgress({ name: file.name, percent: 25 });
         const fileBase64 = await fileToBase64(file);
-        
+
         setUploadProgress({ name: file.name, percent: 60 });
         await new Promise(r => setTimeout(r, 100));
         setUploadProgress({ name: file.name, percent: 100 });
@@ -2946,18 +3609,18 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
         };
 
         updatedDocs = [newDoc, ...updatedDocs];
-        
+
         const updates = {};
         updates[targetField] = updatedDocs;
         await legalService.updateCase(caseData.id || caseData._id, updates);
-        
+
         setCaseData(prev => {
           const updatedData = { ...prev };
           updatedData[targetField] = updatedDocs;
           return updatedData;
         });
         toast.success(`Uploaded successfully: ${file.name}`);
-        
+
         triggerDocumentAnalysis(newDoc, { ...caseData, [targetField]: updatedDocs });
         triggerLiveAnalysisSilent({ ...caseData, [targetField]: updatedDocs });
       }
@@ -2971,7 +3634,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
 
   const handleDeleteEvidence = async (doc) => {
     if (!confirm(`Are you sure you want to delete "${doc.name}"?`)) return;
-    
+
     let targetField = 'documents';
     let label = 'Document';
     if (caseData.evidence?.some(e => e.id === doc.id)) {
@@ -2998,7 +3661,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
   const handleRenameDoc = async (doc) => {
     const newName = prompt("Rename File:", doc.name);
     if (!newName || newName.trim() === "" || newName === doc.name) return;
-    
+
     let targetField = 'documents';
     if (caseData.evidence?.some(e => e.id === doc.id)) {
       targetField = 'evidence';
@@ -3079,7 +3742,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
       safeList(cd.contracts?.map(c => `${c.name || c.filename} — ${c.status || 'Under Review'}`)) || 'No contracts uploaded.',
       ``,
       `─── LEGAL ARGUMENTS ──────────────────────────────`,
-      safeList(cd.aiArguments?.argumentsRoster?.map(a => `${a.title}: ${a.law} (Strength: ${a.strength}) — ${a.counterStrategy || ''}`)) || 
+      safeList(cd.aiArguments?.argumentsRoster?.map(a => `${a.title}: ${a.law} (Strength: ${a.strength}) — ${a.counterStrategy || ''}`)) ||
       (cd.aiArguments?.summary || 'No arguments generated yet.'),
       ``,
       `─── LEGAL RESEARCH & PRECEDENTS ──────────────────`,
@@ -3119,11 +3782,11 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
     if (e) e.preventDefault();
     const query = (overrideQuery || chatInput).trim();
     if (!query) return;
- 
+
     setChatInput('');
     const caseId = caseData.id || caseData._id;
     const userMsg = { id: Date.now().toString(), role: 'user', content: query };
-    
+
     // Save user message to state and storage — sessionType: 'CASE'
     setAiMessages(prev => [...prev, userMsg]);
     if (activeSessionId) {
@@ -3133,7 +3796,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
         caseId, 'CASE', caseId
       );
     }
-    
+
     setIsChatSending(true);
 
     // Initialize AbortController
@@ -3155,7 +3818,7 @@ const CaseDetailView = ({ item, isDark, onBack, onDelete, onAskStrategy, onViewR
 
       if (responseText) {
         const fullContent = responseText;
-        
+
         // Setup incremental simulated streaming output
         const tempMsgId = Date.now().toString();
         const words = fullContent.split(' ');
@@ -3313,7 +3976,7 @@ ${notesText || 'No summary details'}
       navigator.share({
         title: caseData.title || caseData.name,
         text: `Legal Case Workspace for ${caseData.title || caseData.name}.`
-      }).catch(() => {});
+      }).catch(() => { });
     } else {
       navigator.clipboard.writeText(window.location.href);
       toast.success("Case link copied to clipboard!");
@@ -3350,10 +4013,10 @@ ${notesText || 'No summary details'}
     const trimSummary = summary.trim();
 
     // Check for error markers
-    const isError = 
-      trimSummary.includes("AI Analysis Error") || 
-      trimSummary.includes("AI Request Failed") || 
-      trimSummary.includes("Unexpected token") || 
+    const isError =
+      trimSummary.includes("AI Analysis Error") ||
+      trimSummary.includes("AI Request Failed") ||
+      trimSummary.includes("Unexpected token") ||
       trimSummary.includes("Syntax Error") ||
       trimSummary.includes("Response Body") ||
       trimSummary.includes("Raw payload") ||
@@ -3413,7 +4076,7 @@ ${notesText || 'No summary details'}
       if (exec) {
         sections.push({ title: "Executive Summary", content: exec });
       }
-      
+
       // 2. Facts
       const facts = parsedObj.facts || parsedObj.case_facts || parsedObj.dispute_details;
       if (facts) {
@@ -3477,7 +4140,7 @@ ${notesText || 'No summary details'}
 
     const formatSectionContent = (content) => {
       if (typeof content !== 'string') return JSON.stringify(content);
-      
+
       let text = content
         .replace(/^["']|["']$/g, '')
         .replace(/\\"/g, '"')
@@ -3498,7 +4161,7 @@ ${notesText || 'No summary details'}
             </li>
           );
         }
-        
+
         return (
           <p key={index} className="my-2 leading-relaxed text-slate-700 dark:text-slate-300">
             {trimmed}
@@ -3533,18 +4196,18 @@ ${notesText || 'No summary details'}
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">CASE SUMMARY</h4>
             <div className="flex items-center gap-2">
-              {caseData.summary && 
-               !caseData.summary.includes("AI Analysis Error") && 
-               !caseData.summary.includes("AI Request Failed") && 
-               !caseData.summary.includes("__AI_ANALYSIS_FAILED__") && (
-                <button
-                  onClick={() => setIsEditingFacts(!isEditingFacts)}
-                  className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/20 text-[#4F46E5] rounded-lg text-[9px] font-black uppercase tracking-wider border border-indigo-150 hover:bg-indigo-100 transition-all"
-                >
-                  {isEditingFacts ? "AI Summary" : "Edit Facts"}
-                </button>
-              )}
-              <button 
+              {caseData.summary &&
+                !caseData.summary.includes("AI Analysis Error") &&
+                !caseData.summary.includes("AI Request Failed") &&
+                !caseData.summary.includes("__AI_ANALYSIS_FAILED__") && (
+                  <button
+                    onClick={() => setIsEditingFacts(!isEditingFacts)}
+                    className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/20 text-[#4F46E5] rounded-lg text-[9px] font-black uppercase tracking-wider border border-indigo-150 hover:bg-indigo-100 transition-all"
+                  >
+                    {isEditingFacts ? "AI Summary" : "Edit Facts"}
+                  </button>
+                )}
+              <button
                 onClick={handleSaveNotes}
                 className="p-2 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-xl text-gray-400 hover:text-indigo-650 transition-all"
                 title="Save Notes"
@@ -3820,7 +4483,7 @@ ${notesText || 'No summary details'}
       if (timelineFilter === 'recent') return true; // will sort by date desc
       if (timelineFilter === 'important') return evt.priority === 'High' || evt.priority === 'Critical';
       if (timelineFilter === 'high_risk') return evt.priority === 'Critical' || (evt.description || '').toLowerCase().includes('risk') || (evt.description || '').toLowerCase().includes('contradiction');
-      
+
       if (timelineFilter === 'documents') {
         return (evt.category || '').toLowerCase() === 'document upload' || (evt.source && evt.source.match(/\.(pdf|docx|txt|doc|xlsx|png|jpg|jpeg)$/i));
       }
@@ -3901,14 +4564,14 @@ ${notesText || 'No summary details'}
     const delays = [];
     for (let i = 0; i < sortedFilteredEvents.length - 1; i++) {
       const d1 = new Date(sortedFilteredEvents[i].date);
-      const d2 = new Date(sortedFilteredEvents[i+1].date);
+      const d2 = new Date(sortedFilteredEvents[i + 1].date);
       if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
         const diffTime = Math.abs(d2 - d1);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         if (diffDays > 30) {
           delays.push({
             title: `${diffDays} Days Gap Detected`,
-            description: `Gap between "${sortedFilteredEvents[i].title}" and "${sortedFilteredEvents[i+1].title}".`
+            description: `Gap between "${sortedFilteredEvents[i].title}" and "${sortedFilteredEvents[i + 1].title}".`
           });
         }
       }
@@ -3987,9 +4650,8 @@ ${notesText || 'No summary details'}
                   <button
                     key={chip.id}
                     onClick={() => setTimelineFilter(chip.id)}
-                    className={`px-2 py-0.5 rounded-md font-bold uppercase transition-colors cursor-pointer ${
-                      isActive ? 'bg-[#4F46E5] text-white' : 'bg-slate-50 dark:bg-zinc-900 text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800'
-                    }`}
+                    className={`px-2 py-0.5 rounded-md font-bold uppercase transition-colors cursor-pointer ${isActive ? 'bg-[#4F46E5] text-white' : 'bg-slate-50 dark:bg-zinc-900 text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                      }`}
                   >
                     {chip.label}
                   </button>
@@ -4033,9 +4695,8 @@ ${notesText || 'No summary details'}
                   <div className={`absolute left-[-22px] top-2.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-zinc-900 shadow-sm ${nodeColor}`} />
 
                   {/* Card Event Block */}
-                  <div className={`relative bg-white dark:bg-[#131c31] border rounded-xl p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:border-[#4F46E5] dark:hover:border-indigo-500/80 transition-all duration-200 ${
-                    isPinned ? 'border-l-4 border-l-amber-500 border-amber-200/40' : 'border-slate-200 dark:border-zinc-800/80'
-                  }`}>
+                  <div className={`relative bg-white dark:bg-[#131c31] border rounded-xl p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:border-[#4F46E5] dark:hover:border-indigo-500/80 transition-all duration-200 ${isPinned ? 'border-l-4 border-l-amber-500 border-amber-200/40' : 'border-slate-200 dark:border-zinc-800/80'
+                    }`}>
                     {/* Header line specs */}
                     <div className="flex flex-wrap items-center gap-1.5 text-[9px] font-bold text-slate-400 mb-1">
                       {getEventIcon(evt.category)}
@@ -4140,7 +4801,7 @@ ${notesText || 'No summary details'}
     // Ready for Court logic
     const isPreparationPending = list.some(h => (h.status === 'Upcoming' || h.status === 'scheduled') && (!h.clerkNotes || h.clerkNotes.toLowerCase().includes('pending')));
     const hearingStatusText = isPreparationPending ? 'Preparation Pending' : (list.length > 0 ? 'Ready for Court' : 'Preparation Pending');
-    
+
     // Status colors mapping for timeline cards
     const statusColors = {
       Upcoming: 'bg-blue-50 dark:bg-blue-950/20 text-blue-650 dark:text-blue-400 border-blue-200/20',
@@ -4164,13 +4825,13 @@ ${notesText || 'No summary details'}
             AI could not detect any hearing details because the case currently contains no hearing-related information.
           </p>
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={handleGenerateAiSummary}
               className="px-4 py-1.5 bg-indigo-605 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all"
             >
               Generate AI Summary
             </button>
-            <button 
+            <button
               onClick={() => document.getElementById('workspace-doc-upload').click()}
               className="px-4 py-1.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-slate-350 font-bold text-xs rounded-lg shadow-sm transition-all"
             >
@@ -4215,7 +4876,7 @@ ${notesText || 'No summary details'}
 
     return (
       <div className="space-y-5 animate-in fade-in duration-300">
-        
+
         {/* Compact Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800/60 gap-2 sm:gap-3">
           <div className="space-y-0.5">
@@ -4235,7 +4896,7 @@ ${notesText || 'No summary details'}
           </div>
 
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={() => { setEditingHearing(null); setIsHearingModalVisible(true); }}
               className="px-3 py-1.5 bg-[#4F46E5] hover:opacity-95 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm"
             >
@@ -4256,7 +4917,7 @@ ${notesText || 'No summary details'}
             </div>
             <div className="pt-2 border-t border-slate-100 dark:border-zinc-800/40 flex justify-between items-center">
               <span className="text-[9px] text-slate-450 dark:text-slate-500 font-medium">{nextHearing ? nextHearing.time || '10:30 AM' : 'No Appearances'}</span>
-              <button 
+              <button
                 onClick={() => { setEditingHearing(null); setIsHearingModalVisible(true); }}
                 className="text-[9px] font-bold text-[#4F46E5] hover:underline"
               >
@@ -4289,7 +4950,7 @@ ${notesText || 'No summary details'}
             </div>
             <div className="pt-2 border-t border-slate-100 dark:border-zinc-800/40 flex justify-between items-center">
               <span className="text-[9px] text-slate-450 dark:text-slate-550 font-medium">{(caseData.documents?.length || 0) + (caseData.evidence?.length || 0) + (caseData.contracts?.length || 0)} Total Files</span>
-              <button 
+              <button
                 onClick={() => document.getElementById('workspace-doc-upload').click()}
                 className="text-[9px] font-bold text-[#4F46E5] hover:underline"
               >
@@ -4332,11 +4993,10 @@ ${notesText || 'No summary details'}
                 <button
                   key={chip.id}
                   onClick={() => setHearingFilter(chip.id)}
-                  className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${
-                    isActive 
-                      ? 'bg-white dark:bg-[#1a2540] text-slate-805 dark:text-white shadow-xs' 
+                  className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${isActive
+                      ? 'bg-white dark:bg-[#1a2540] text-slate-805 dark:text-white shadow-xs'
                       : 'text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   {chip.label}
                 </button>
@@ -4344,9 +5004,9 @@ ${notesText || 'No summary details'}
             })}
           </div>
 
-        <div className="relative w-full sm:w-56">
+          <div className="relative w-full sm:w-56">
             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input 
+            <input
               type="text"
               value={hearingSearchQuery}
               onChange={e => setHearingSearchQuery(e.target.value)}
@@ -4371,8 +5031,8 @@ ${notesText || 'No summary details'}
             const accentClass = statusAccents[h.status] || statusAccents.Upcoming;
 
             return (
-              <div 
-                key={h.id || i} 
+              <div
+                key={h.id || i}
                 className={`bg-white dark:bg-[#151f32] border border-slate-255 dark:border-zinc-800/60 rounded-xl p-3.5 shadow-xs flex flex-col justify-between gap-3 border-l-4 ${accentClass} hover:shadow-xs transition-all`}
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5">
@@ -4410,8 +5070,8 @@ ${notesText || 'No summary details'}
                       <div className="flex items-center gap-1.5 mt-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-black/10 border border-slate-100/40 dark:border-zinc-800/20 px-2.5 py-1 rounded-lg w-fit">
                         <FileText size={11} className="text-red-500" />
                         <span>Court Order File:</span>
-                        <span 
-                          className="underline cursor-pointer text-[#4F46E5] dark:text-indigo-400" 
+                        <span
+                          className="underline cursor-pointer text-[#4F46E5] dark:text-indigo-400"
                           onClick={() => handleOpenDoc({ name: h.orderDocumentName, uri: h.orderDocumentUri })}
                         >
                           {h.orderDocumentName}
@@ -4422,23 +5082,23 @@ ${notesText || 'No summary details'}
 
                   {/* Quick actions */}
                   <div className="flex items-center gap-2 border-t md:border-t-0 pt-2.5 md:pt-0 border-slate-100 dark:border-zinc-800/40">
-                    <button 
+                    <button
                       onClick={() => { setSelectedDetailHearing(h); setIsHearingClerkModalOpen(true); }}
                       className="px-2 py-1 text-[11px] font-bold text-indigo-650 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-md transition-colors flex items-center gap-1"
                       title="View AI Preparation Notes"
                     >
                       <Brain size={12} /> AI Brief
                     </button>
-                    
-                    <button 
+
+                    <button
                       onClick={() => { setEditingHearing(h); setIsHearingModalVisible(true); }}
                       className="px-2 py-1 text-[11px] font-bold text-slate-605 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-md transition-colors"
                     >
                       Edit
                     </button>
-                    
+
                     {h.status !== 'Completed' && (
-                      <button 
+                      <button
                         onClick={async () => {
                           try {
                             await legalService.updateHearing(h.id, { status: 'completed' });
@@ -4458,31 +5118,30 @@ ${notesText || 'No summary details'}
 
                     {h.orderDocumentId ? (
                       <>
-                        <button 
+                        <button
                           onClick={() => handleOpenDoc({ name: h.orderDocumentName, uri: h.orderDocumentUri })}
                           className="px-2 py-1 text-[11px] font-bold text-[#4F46E5] hover:bg-indigo-50 dark:hover:bg-indigo-950/25 rounded-md transition-colors"
                         >
                           View Order
                         </button>
-                        <button 
+                        <button
                           onClick={() => { setUploadOrderContextHearing(h); setIsUploadOrderModalOpen(true); }}
                           className="px-2 py-1 text-[11px] font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/25 rounded-md transition-colors"
                         >
                           Replace Order
                         </button>
-                        <button 
+                        <button
                           onClick={() => setExpandedAiSummaryHearingId(expandedAiSummaryHearingId === h.id ? null : h.id)}
-                          className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors flex items-center gap-1 ${
-                            expandedAiSummaryHearingId === h.id 
-                              ? 'bg-[#4F46E5] text-white' 
+                          className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors flex items-center gap-1 ${expandedAiSummaryHearingId === h.id
+                              ? 'bg-[#4F46E5] text-white'
                               : 'text-indigo-605 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/25'
-                          }`}
+                            }`}
                         >
                           <Sparkles size={11} /> AI Summary
                         </button>
                       </>
                     ) : (
-                      <button 
+                      <button
                         onClick={() => { setUploadOrderContextHearing(h); setIsUploadOrderModalOpen(true); }}
                         className="px-2 py-1 text-[11px] font-bold text-slate-605 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-md transition-colors"
                         title="Upload Court Order"
@@ -4491,7 +5150,7 @@ ${notesText || 'No summary details'}
                       </button>
                     )}
 
-                    <button 
+                    <button
                       onClick={() => handleDeleteHearing(h.id)}
                       className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/25 rounded-md transition-colors ml-1"
                       title="Delete Hearing"
@@ -4508,7 +5167,7 @@ ${notesText || 'No summary details'}
                       <p className="font-bold text-slate-800 dark:text-white uppercase tracking-wider text-[9px] text-[#4F46E5] dark:text-indigo-400 flex items-center gap-1">
                         <Sparkles size={11} /> Court Order AI Insights Dossier
                       </p>
-                      <button 
+                      <button
                         onClick={() => setExpandedAiSummaryHearingId(null)}
                         className="text-[9px] font-bold text-slate-400 hover:text-slate-600"
                       >
@@ -4524,7 +5183,7 @@ ${notesText || 'No summary details'}
                     {h.orderNextHearingDate && (
                       <div className="pt-2 border-t border-slate-200/50 dark:border-zinc-800/60 flex items-center justify-between gap-2">
                         <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-450">📅 Extracted next hearing date: {h.orderNextHearingDate}</span>
-                        <button 
+                        <button
                           onClick={() => handleCreateNextHearing(h, h.orderNextHearingDate)}
                           className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 rounded text-[9px] font-black uppercase tracking-wider border border-emerald-250/20 transition-colors animate-pulse"
                         >
@@ -4669,7 +5328,7 @@ ${notesText || 'No summary details'}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={() => setIsEditRosterModalOpen(true)}
               className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-indigo-650 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-all"
             >
@@ -4743,7 +5402,7 @@ ${notesText || 'No summary details'}
 
     return (
       <div className="space-y-4 animate-in fade-in duration-300">
-        
+
         {/* COMPACT TOOLBAR */}
         <div className="bg-white dark:bg-[#151f32] border border-slate-205 dark:border-zinc-805/60 rounded-xl px-4 py-2.5 hover:shadow-sm transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-h-[58px]">
           {/* Title & Stats */}
@@ -4765,14 +5424,14 @@ ${notesText || 'No summary details'}
           {/* Action Row */}
           <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
             <div className="flex items-center bg-slate-55 dark:bg-black/20 p-0.5 rounded-lg border border-slate-150 dark:border-zinc-800/40 mr-1">
-              <button 
+              <button
                 onClick={() => setDocViewMode('grid')}
                 className={`p-1.5 rounded-md transition-all ${docViewMode === 'grid' ? 'bg-white dark:bg-zinc-800 text-[#4F46E5] shadow-xs' : 'text-slate-400 hover:text-slate-600'}`}
                 title="Grid View"
               >
                 <LayoutGrid size={11} />
               </button>
-              <button 
+              <button
                 onClick={() => setDocViewMode('list')}
                 className={`p-1.5 rounded-md transition-all ${docViewMode === 'list' ? 'bg-white dark:bg-zinc-800 text-[#4F46E5] shadow-xs' : 'text-slate-400 hover:text-slate-600'}`}
                 title="List View"
@@ -4781,7 +5440,7 @@ ${notesText || 'No summary details'}
               </button>
             </div>
 
-            <button 
+            <button
               onClick={() => document.getElementById('workspace-doc-upload').click()}
               className="px-3 py-1.5 bg-[#4F46E5] hover:opacity-95 text-white font-black text-[9px] uppercase tracking-wider rounded-lg transition-all"
             >
@@ -4791,7 +5450,7 @@ ${notesText || 'No summary details'}
         </div>
 
         {/* DRAG & DROP UPLOAD BOX */}
-        <div 
+        <div
           onClick={() => document.getElementById('workspace-doc-upload').click()}
           onDragOver={e => e.preventDefault()}
           onDrop={handleDropUpload}
@@ -4821,9 +5480,9 @@ ${notesText || 'No summary details'}
         <div className="flex flex-col md:flex-row gap-2 items-center justify-between bg-slate-50/50 dark:bg-black/10 p-1.5 rounded-lg border border-slate-150 dark:border-zinc-800/40">
           <div className="relative w-full md:max-w-xs shrink-0">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={11} />
-            <input 
-              type="text" 
-              placeholder="Search documents..." 
+            <input
+              type="text"
+              placeholder="Search documents..."
               value={docSearchQuery}
               onChange={(e) => setDocSearchQuery(e.target.value)}
               className="w-full bg-white dark:bg-zinc-805 border border-slate-200 dark:border-zinc-700/80 rounded-md pl-7 pr-3 py-1 text-[10px] font-bold text-slate-800 dark:text-white outline-none placeholder:text-slate-400"
@@ -4832,14 +5491,13 @@ ${notesText || 'No summary details'}
 
           <div className="flex flex-wrap gap-1 w-full md:w-auto justify-end">
             {categories.map(chip => (
-              <button 
+              <button
                 key={chip.id}
                 onClick={() => setDocFilter(chip.id)}
-                className={`px-2.5 py-1 text-[8.5px] font-black uppercase tracking-wider rounded-lg border transition-all ${
-                  docFilter === chip.id
+                className={`px-2.5 py-1 text-[8.5px] font-black uppercase tracking-wider rounded-lg border transition-all ${docFilter === chip.id
                     ? 'bg-slate-800 dark:bg-zinc-700 text-white border-slate-800 dark:border-zinc-650'
                     : 'bg-white dark:bg-zinc-800 text-slate-500 border-slate-200 dark:border-zinc-700 hover:bg-slate-50'
-                }`}
+                  }`}
               >
                 {chip.label}
               </button>
@@ -4859,15 +5517,14 @@ ${notesText || 'No summary details'}
                   <div>
                     <div className="flex items-start justify-between gap-2.5">
                       <div className="flex items-center gap-2 truncate">
-                        <div className={`p-1.5 rounded-lg shrink-0 ${
-                          isPDF ? 'bg-rose-50 text-red-655 dark:bg-rose-950/20' :
-                          isWord ? 'bg-indigo-50 text-[#4F46E5] dark:bg-indigo-950/20' :
-                          'bg-slate-55 text-slate-500 dark:bg-zinc-800'
-                        }`}>
+                        <div className={`p-1.5 rounded-lg shrink-0 ${isPDF ? 'bg-rose-50 text-red-655 dark:bg-rose-950/20' :
+                            isWord ? 'bg-indigo-50 text-[#4F46E5] dark:bg-indigo-950/20' :
+                              'bg-slate-55 text-slate-500 dark:bg-zinc-800'
+                          }`}>
                           <FileText size={13} />
                         </div>
                         <div className="truncate">
-                          <h4 
+                          <h4
                             onClick={() => { setSelectedDocDetails(doc); setIsDocInsightsOpen(true); }}
                             className="text-xs font-black text-slate-808 dark:text-white uppercase tracking-wider truncate cursor-pointer hover:text-[#4F46E5] hover:underline"
                             title={doc.name}
@@ -4961,14 +5618,13 @@ ${notesText || 'No summary details'}
                       <tr key={idx} className="hover:bg-slate-50/30 dark:hover:bg-black/5 transition-colors group">
                         <td className="py-2 px-4 min-w-[200px]">
                           <div className="flex items-center gap-2">
-                            <div className={`p-1 rounded ${
-                              isPDF ? 'bg-rose-50 text-red-655 dark:bg-rose-950/20' :
-                              isWord ? 'bg-indigo-50 text-[#4F46E5] dark:bg-indigo-950/20' :
-                              'bg-slate-55 text-slate-500 dark:bg-zinc-800'
-                            }`}>
+                            <div className={`p-1 rounded ${isPDF ? 'bg-rose-50 text-red-655 dark:bg-rose-950/20' :
+                                isWord ? 'bg-indigo-50 text-[#4F46E5] dark:bg-indigo-950/20' :
+                                  'bg-slate-55 text-slate-500 dark:bg-zinc-800'
+                              }`}>
                               <FileText size={11} />
                             </div>
-                            <span 
+                            <span
                               onClick={() => { setSelectedDocDetails(doc); setIsDocInsightsOpen(true); }}
                               className="text-xs font-bold text-slate-808 dark:text-white cursor-pointer hover:text-[#4F46E5] truncate max-w-[250px]"
                             >
@@ -5032,13 +5688,13 @@ ${notesText || 'No summary details'}
     const getFileIcon = (doc) => {
       const ext = (doc.name || '').split('.').pop().toLowerCase();
       const t = doc.type || '';
-      if (t.startsWith('image/') || ['jpg','jpeg','png','webp','gif'].includes(ext)) return '🖼';
-      if (t.startsWith('video/') || ['mp4','mov','avi'].includes(ext)) return '🎬';
-      if (t.startsWith('audio/') || ['mp3','wav','m4a'].includes(ext)) return '🎵';
+      if (t.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) return '🖼';
+      if (t.startsWith('video/') || ['mp4', 'mov', 'avi'].includes(ext)) return '🎬';
+      if (t.startsWith('audio/') || ['mp3', 'wav', 'm4a'].includes(ext)) return '🎵';
       if (ext === 'pdf') return '📄';
-      if (['doc','docx'].includes(ext)) return '📝';
-      if (['xls','xlsx'].includes(ext)) return '📊';
-      if (['zip','rar'].includes(ext)) return '🗜';
+      if (['doc', 'docx'].includes(ext)) return '📝';
+      if (['xls', 'xlsx'].includes(ext)) return '📊';
+      if (['zip', 'rar'].includes(ext)) return '🗜';
       return '📁';
     };
 
@@ -5080,16 +5736,16 @@ ${notesText || 'No summary details'}
       if (evidenceFilter === 'pending') return adm === 'challenged';
       if (evidenceFilter === 'strong') return str === 'strong';
       if (evidenceFilter === 'weak') return str === 'weak';
-      if (evidenceFilter === 'flagged') return ['disputed','tampered'].includes(str) || adm === 'inadmissible';
-      if (evidenceFilter === 'documents') return ['agreement','contract','petition','affidavit','legal notice','reply','written statement','appeal','charge sheet'].includes(cat);
-      if (evidenceFilter === 'media') return ['photograph','video','audio','cctv','image'].includes(cat) || ['jpg','jpeg','png','mp4','mov','mp3','wav'].some(e => (doc.name||'').toLowerCase().endsWith('.'+e));
-      if (evidenceFilter === 'financial') return ['invoice','receipt','bank statement','sale deed'].includes(cat);
-      if (evidenceFilter === 'communications') return ['email','whatsapp chat'].includes(cat);
+      if (evidenceFilter === 'flagged') return ['disputed', 'tampered'].includes(str) || adm === 'inadmissible';
+      if (evidenceFilter === 'documents') return ['agreement', 'contract', 'petition', 'affidavit', 'legal notice', 'reply', 'written statement', 'appeal', 'charge sheet'].includes(cat);
+      if (evidenceFilter === 'media') return ['photograph', 'video', 'audio', 'cctv', 'image'].includes(cat) || ['jpg', 'jpeg', 'png', 'mp4', 'mov', 'mp3', 'wav'].some(e => (doc.name || '').toLowerCase().endsWith('.' + e));
+      if (evidenceFilter === 'financial') return ['invoice', 'receipt', 'bank statement', 'sale deed'].includes(cat);
+      if (evidenceFilter === 'communications') return ['email', 'whatsapp chat'].includes(cat);
       if (evidenceFilter === 'witness') return cat === 'affidavit' || cat === 'witness statement';
       if (evidenceFilter === 'court_orders') return cat === 'court order' || cat === 'judgment';
-      if (evidenceFilter === 'contracts') return ['agreement','employment contract','nda','contract'].includes(cat);
+      if (evidenceFilter === 'contracts') return ['agreement', 'employment contract', 'nda', 'contract'].includes(cat);
       if (evidenceFilter === 'ocr') return (doc.ocrStatus || '').toLowerCase().includes('ocr');
-      if (evidenceFilter === 'ai_flagged') return doc.riskLevel === 'High' || ['disputed','tampered'].includes(str);
+      if (evidenceFilter === 'ai_flagged') return doc.riskLevel === 'High' || ['disputed', 'tampered'].includes(str);
       return true;
     });
 
@@ -5102,21 +5758,21 @@ ${notesText || 'No summary details'}
     const recentCount = allDocs.filter(d => Date.now() - new Date(d.uploadedAt || 0).getTime() < 3 * 24 * 3600 * 1000).length;
 
     const chips = [
-      { id: 'all',            label: 'All' },
-      { id: 'verified',       label: 'Verified' },
-      { id: 'pending',        label: 'Pending' },
-      { id: 'strong',         label: 'Strong' },
-      { id: 'weak',           label: 'Weak' },
-      { id: 'ai_flagged',     label: 'AI Flagged' },
-      { id: 'documents',      label: 'Documents' },
-      { id: 'media',          label: 'Media' },
-      { id: 'financial',      label: 'Financial' },
+      { id: 'all', label: 'All' },
+      { id: 'verified', label: 'Verified' },
+      { id: 'pending', label: 'Pending' },
+      { id: 'strong', label: 'Strong' },
+      { id: 'weak', label: 'Weak' },
+      { id: 'ai_flagged', label: 'AI Flagged' },
+      { id: 'documents', label: 'Documents' },
+      { id: 'media', label: 'Media' },
+      { id: 'financial', label: 'Financial' },
       { id: 'communications', label: 'Comms' },
-      { id: 'witness',        label: 'Witness' },
-      { id: 'court_orders',   label: 'Court Orders' },
-      { id: 'contracts',      label: 'Contracts' },
-      { id: 'ocr',            label: 'OCR' },
-      { id: 'ai_flagged',     label: '⚠ Flagged' },
+      { id: 'witness', label: 'Witness' },
+      { id: 'court_orders', label: 'Court Orders' },
+      { id: 'contracts', label: 'Contracts' },
+      { id: 'ocr', label: 'OCR' },
+      { id: 'ai_flagged', label: '⚠ Flagged' },
     ];
 
     return (
@@ -5134,13 +5790,13 @@ ${notesText || 'No summary details'}
             </div>
             <div className="hidden md:flex items-center gap-1.5 ml-3 flex-wrap">
               {[
-                { label: `${totalCount} Total`,   cls: 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300' },
+                { label: `${totalCount} Total`, cls: 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300' },
                 { label: `${verifiedCount} Verified`, cls: 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400' },
-                { label: `${pendingCount} Pending`,   cls: 'bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-400' },
-                { label: `${flaggedCount} Flagged`,   cls: 'bg-red-50 dark:bg-red-955/20 text-red-605 dark:text-red-400' },
-                { label: `${strongCount} Strong`,     cls: 'bg-emerald-50 dark:bg-emerald-955/20 text-emerald-650' },
-                { label: `${weakCount} Weak`,         cls: 'bg-amber-50 dark:bg-amber-955/20 text-amber-600' },
-                { label: `${recentCount} Recent`,     cls: 'bg-indigo-55/20 dark:bg-indigo-955/20 text-indigo-650 dark:text-indigo-400' },
+                { label: `${pendingCount} Pending`, cls: 'bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-400' },
+                { label: `${flaggedCount} Flagged`, cls: 'bg-red-50 dark:bg-red-955/20 text-red-605 dark:text-red-400' },
+                { label: `${strongCount} Strong`, cls: 'bg-emerald-50 dark:bg-emerald-955/20 text-emerald-650' },
+                { label: `${weakCount} Weak`, cls: 'bg-amber-50 dark:bg-amber-955/20 text-amber-600' },
+                { label: `${recentCount} Recent`, cls: 'bg-indigo-55/20 dark:bg-indigo-955/20 text-indigo-650 dark:text-indigo-400' },
               ].map((s, i) => (
                 <span key={i} className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border border-transparent ${s.cls}`}>{s.label}</span>
               ))}
@@ -5163,7 +5819,7 @@ ${notesText || 'No summary details'}
         </div>
 
         {/* Drag and drop upload zone */}
-        <div 
+        <div
           onClick={() => document.getElementById('workspace-doc-upload').click()}
           onDragOver={e => e.preventDefault()}
           onDrop={handleDropUpload}
@@ -5183,9 +5839,9 @@ ${notesText || 'No summary details'}
         <div className="flex flex-col md:flex-row gap-2 items-center justify-between bg-slate-50/50 dark:bg-black/10 p-1.5 rounded-lg border border-slate-150 dark:border-zinc-800/40">
           <div className="relative w-full md:max-w-xs shrink-0">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-405" size={11} />
-            <input 
-              type="text" 
-              placeholder="Search evidence..." 
+            <input
+              type="text"
+              placeholder="Search evidence..."
               value={evidenceSearchQuery}
               onChange={(e) => setEvidenceSearchQuery(e.target.value)}
               className="w-full bg-white dark:bg-zinc-805 border border-slate-205 dark:border-zinc-700/80 rounded-md pl-7 pr-3 py-1 text-[10px] font-bold text-slate-808 dark:text-white outline-none"
@@ -5193,14 +5849,13 @@ ${notesText || 'No summary details'}
           </div>
           <div className="flex flex-wrap gap-1 w-full justify-start sm:justify-end max-w-full">
             {chips.map(chip => (
-              <button 
+              <button
                 key={chip.id}
                 onClick={() => setEvidenceFilter(chip.id)}
-                className={`px-2.5 py-1 text-[8.5px] font-black uppercase tracking-wider rounded-lg border transition-all shrink-0 ${
-                  evidenceFilter === chip.id
+                className={`px-2.5 py-1 text-[8.5px] font-black uppercase tracking-wider rounded-lg border transition-all shrink-0 ${evidenceFilter === chip.id
                     ? 'bg-[#EF4444] text-white border-[#EF4444]'
                     : 'bg-white dark:bg-zinc-800 text-slate-500 border-slate-200 dark:border-zinc-700 hover:bg-slate-50'
-                }`}
+                  }`}
               >
                 {chip.label}
               </button>
@@ -5245,7 +5900,7 @@ ${notesText || 'No summary details'}
         <div className="bg-white dark:bg-[#1A2540] border border-slate-200 dark:border-zinc-800/80 rounded-2xl overflow-hidden shadow-sm">
           <div className="hidden sm:block overflow-x-auto w-full">
             <div className="min-w-[800px] divide-y divide-slate-100 dark:divide-zinc-800/85">
-              
+
               {/* Header */}
               <div className="bg-slate-50/50 dark:bg-zinc-900/30 px-4 py-2.5 grid grid-cols-12 gap-3 text-[8.5px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">
                 <div className="col-span-4">Evidence Item</div>
@@ -5266,12 +5921,12 @@ ${notesText || 'No summary details'}
 
                   return (
                     <div key={doc.id || idx} className="px-4 py-2.5 grid grid-cols-12 gap-3 items-center hover:bg-slate-50/30 dark:hover:bg-zinc-800/30 transition-colors group text-[9.5px] font-bold text-slate-700 dark:text-slate-355 text-left">
-                      
+
                       {/* Name */}
                       <div className="col-span-4 flex items-center gap-2 truncate">
                         <span className="text-base shrink-0">{getFileIcon(doc)}</span>
                         <div className="truncate">
-                          <h4 
+                          <h4
                             onClick={() => { setSelectedEvidenceDetails(doc); setIsEvidenceInsightsOpen(true); }}
                             className="font-black text-slate-808 dark:text-white uppercase tracking-wider truncate cursor-pointer hover:underline hover:text-[#EF4444]"
                           >
@@ -5554,7 +6209,7 @@ ${notesText || 'No summary details'}
               <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Key Legal Issues</span>
               <div className="flex flex-wrap gap-1">
                 {(aiResearch.legalIssues || []).map((issue, idx) => (
-                  <span key={idx} className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 text-[8px] font-bold rounded-md">{idx+1}. {issue}</span>
+                  <span key={idx} className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 text-[8px] font-bold rounded-md">{idx + 1}. {issue}</span>
                 ))}
               </div>
             </div>
@@ -5605,11 +6260,10 @@ ${notesText || 'No summary details'}
                     </div>
                     <button
                       onClick={() => handleToggleBookmarkCitation({ name: st.actName, section: st.section, type: 'statute' })}
-                      className={`p-1.5 rounded-lg border transition-colors shrink-0 ${
-                        (caseData.savedCitations || []).some(c => c.section === st.section)
+                      className={`p-1.5 rounded-lg border transition-colors shrink-0 ${(caseData.savedCitations || []).some(c => c.section === st.section)
                           ? 'bg-indigo-50 text-[#4F46E5] border-indigo-200'
                           : 'bg-white dark:bg-zinc-800 hover:bg-slate-50 text-slate-400 border-slate-200 dark:border-zinc-700'
-                      }`}
+                        }`}
                       title="Bookmark"
                     >
                       <Bookmark size={11} />
@@ -5667,11 +6321,10 @@ ${notesText || 'No summary details'}
                     </div>
                     <button
                       onClick={() => handleToggleBookmarkCitation({ name: pr.caseName, citation: pr.citation, type: 'precedent' })}
-                      className={`p-1.5 rounded-lg border transition-colors shrink-0 ${
-                        (caseData.savedCitations || []).some(c => c.citation === pr.citation)
+                      className={`p-1.5 rounded-lg border transition-colors shrink-0 ${(caseData.savedCitations || []).some(c => c.citation === pr.citation)
                           ? 'bg-indigo-50 text-[#4F46E5] border-indigo-200'
                           : 'bg-white dark:bg-zinc-800 hover:bg-slate-50 text-slate-400 border-slate-200 dark:border-zinc-700'
-                      }`}
+                        }`}
                       title="Bookmark"
                     >
                       <Bookmark size={11} />
@@ -5798,7 +6451,7 @@ ${notesText || 'No summary details'}
 
       await apiService.updateProject(caseData.id || caseData._id, { drafts: updatedDrafts });
       setCaseData(prev => ({ ...prev, drafts: updatedDrafts }));
-      
+
       const updatedDraft = updatedDrafts.find(d => d.id === draftId);
       if (updatedDraft) {
         setSelectedDraft(updatedDraft);
@@ -5818,10 +6471,10 @@ ${notesText || 'No summary details'}
       setIsGeneratingDraft(true);
       setIsDraftModalOpen(false);
 
-      const toastId = aiGenerated 
-        ? toast.loading("AI Legal Draftsman is analyzing case context and writing court-ready submission...") 
+      const toastId = aiGenerated
+        ? toast.loading("AI Legal Draftsman is analyzing case context and writing court-ready submission...")
         : toast.loading("Creating draft...");
-      
+
       let initialContent = "";
       if (aiGenerated) {
         const caseNotesText = (caseNotes || []).map(n => `- Note [${n.title}]: ${n.content}`).join('\n');
@@ -5897,11 +6550,11 @@ INSTRUCTIONS:
 
       const updatedDrafts = [...(caseData.drafts || []), newDraft];
       await apiService.updateProject(caseData.id || caseData._id, { drafts: updatedDrafts });
-      
+
       setCaseData(prev => ({ ...prev, drafts: updatedDrafts }));
       setDraftPurpose('');
       setDraftInstructions('');
-      
+
       setSelectedDraft(newDraft);
       toast.success(aiGenerated ? "AI Draft generated successfully!" : "Draft created!", { id: toastId });
     } catch (err) {
@@ -6032,8 +6685,8 @@ INSTRUCTIONS:
     const manualCount = totalCount - aiCount;
     const pendingCount = drafts.filter(d => d.status !== 'Completed').length;
     const finalizedCount = totalCount - pendingCount;
-    const lastSavedTime = totalCount > 0 
-      ? new Date(Math.max(...drafts.map(d => new Date(d.updatedAt)))).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+    const lastSavedTime = totalCount > 0
+      ? new Date(Math.max(...drafts.map(d => new Date(d.updatedAt)))).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : 'N/A';
 
     const getStatusColor = (status) => {
@@ -6049,11 +6702,11 @@ INSTRUCTIONS:
 
       return (
         <div className="bg-slate-50 dark:bg-[#0B132B] border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm flex flex-col h-[650px] animate-in fade-in duration-300">
-          
+
           <div className="bg-white dark:bg-[#1A2540] border-b border-slate-200 dark:border-zinc-850 px-4 py-2.5 flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setSelectedDraft(null)} 
+              <button
+                onClick={() => setSelectedDraft(null)}
                 className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-500 dark:text-slate-400 transition-colors"
                 title="Back to library"
               >
@@ -6082,9 +6735,9 @@ INSTRUCTIONS:
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
-              <select 
-                value={editorLineSpacing} 
-                onChange={(e) => setEditorLineSpacing(e.target.value)} 
+              <select
+                value={editorLineSpacing}
+                onChange={(e) => setEditorLineSpacing(e.target.value)}
                 className="bg-slate-50 dark:bg-zinc-850 border border-slate-200 dark:border-zinc-700 text-[8.5px] font-bold rounded px-1.5 py-1 outline-none text-slate-600 dark:text-slate-350"
               >
                 <option value="single">Single Space</option>
@@ -6092,9 +6745,9 @@ INSTRUCTIONS:
                 <option value="double">Double Space</option>
               </select>
 
-              <select 
-                value={editorFontFamily} 
-                onChange={(e) => setEditorFontFamily(e.target.value)} 
+              <select
+                value={editorFontFamily}
+                onChange={(e) => setEditorFontFamily(e.target.value)}
                 className="bg-slate-50 dark:bg-zinc-855 border border-slate-200 dark:border-zinc-700 text-[8.5px] font-bold rounded px-1.5 py-1 outline-none text-slate-600 dark:text-slate-355"
               >
                 <option value="serif">Times Legal Serif</option>
@@ -6123,8 +6776,8 @@ INSTRUCTIONS:
                 <option value="Completed">Finalized</option>
               </select>
 
-              <button 
-                onClick={() => handleDownloadDraft(draftObj)} 
+              <button
+                onClick={() => handleDownloadDraft(draftObj)}
                 className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-[8.5px] font-black uppercase tracking-wider transition-all"
               >
                 Download (.txt)
@@ -6266,7 +6919,7 @@ INSTRUCTIONS:
                   {(draftObj.versions || []).map((ver, i) => (
                     <div key={i} className="flex items-center justify-between p-1 bg-slate-50 dark:bg-zinc-800 rounded text-[7.5px] font-semibold text-slate-505">
                       <span>Ver {ver.version} - {new Date(ver.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      <button 
+                      <button
                         onClick={() => {
                           if (confirm(`Restore draft to Version ${ver.version}?`)) {
                             handleSaveDraftContent(draftObj.id, ver.content);
@@ -6290,7 +6943,7 @@ INSTRUCTIONS:
 
     return (
       <div className="space-y-3 animate-in fade-in duration-300">
-        
+
         <div className="bg-white dark:bg-[#1A2540] border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-3 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/20 text-[#4F46E5] rounded-xl">
@@ -6363,7 +7016,7 @@ INSTRUCTIONS:
               </div>
               <h5 className="text-[10px] font-black text-slate-700 dark:text-white uppercase tracking-wider">No Drafts Yet</h5>
               <p className="text-[8px] text-slate-400 font-bold uppercase mb-3">Create or AI generate a new draft for this case.</p>
-              <button 
+              <button
                 onClick={() => setIsDraftModalOpen(true)}
                 className="px-3 py-1.5 bg-[#4F46E5] hover:opacity-90 text-white font-black text-[8px] uppercase tracking-wider rounded-lg transition-all"
               >
@@ -6509,7 +7162,7 @@ INSTRUCTIONS:
       input.onchange = async (e) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
-        
+
         let updatedDocs = [...(caseData.contracts || [])];
         const toastId = toast.loading("Uploading and processing contract...");
         try {
@@ -6535,11 +7188,11 @@ INSTRUCTIONS:
             tags: [detectedType]
           };
           updatedDocs = [newDoc, ...updatedDocs];
-          
+
           await legalService.updateCase(caseData.id || caseData._id, { contracts: updatedDocs });
           setCaseData(prev => ({ ...prev, contracts: updatedDocs }));
           toast.success(`Contract uploaded: ${file.name}`, { id: toastId });
-          
+
           setTimeout(() => {
             handleTriggerContractAnalysis(newDoc);
           }, 300);
@@ -6558,20 +7211,20 @@ INSTRUCTIONS:
     const unsignedCount = contracts.filter(c => c.signatureDetected === false || c.status?.toLowerCase() === 'unsigned').length;
     const expiredCount = contracts.filter(c => c.status?.toLowerCase() === 'expired').length;
     const pendingReviewCount = contracts.filter(c => c.status === 'Pending Review' || !c.contractAnalysis).length;
-    const lastUploadedDate = totalContracts > 0 
+    const lastUploadedDate = totalContracts > 0
       ? new Date(Math.max(...contracts.map(c => new Date(c.uploadedAt || 0)))).toLocaleDateString()
       : 'N/A';
 
     // Filters logic
     const filteredContracts = contracts.filter(doc => {
       const query = contractSearchQuery.toLowerCase();
-      const matchesSearch = !query || 
+      const matchesSearch = !query ||
         (doc.name || '').toLowerCase().includes(query) ||
         (doc.category || '').toLowerCase().includes(query) ||
         (doc.tags || []).some(t => t.toLowerCase().includes(query)) ||
         (doc.contractAnalysis?.parties?.partyA || '').toLowerCase().includes(query) ||
         (doc.contractAnalysis?.parties?.partyB || '').toLowerCase().includes(query);
-      
+
       if (!matchesSearch) return false;
 
       if (contractFilterType === 'All') return true;
@@ -6580,7 +7233,7 @@ INSTRUCTIONS:
       if (contractFilterType === 'Signed') return doc.status?.toLowerCase() === 'signed' || doc.signatureDetected === true;
       if (contractFilterType === 'Unsigned') return doc.status?.toLowerCase() === 'unsigned' || doc.signatureDetected === false;
       if (contractFilterType === 'Expired') return doc.status?.toLowerCase() === 'expired';
-      
+
       const cat = (doc.category || '').toLowerCase();
       const name = (doc.name || '').toLowerCase();
       const keyword = contractFilterType.toLowerCase();
@@ -6598,7 +7251,7 @@ INSTRUCTIONS:
 
     return (
       <div className="space-y-4 animate-in fade-in duration-300">
-        
+
         {/* Stats Cards Row */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
           {[
@@ -6647,7 +7300,7 @@ INSTRUCTIONS:
         </div>
 
         {/* Drag & Drop uploader for contracts */}
-        <div 
+        <div
           onClick={handleUploadContract}
           onDragOver={e => e.preventDefault()}
           onDrop={handleDropUpload}
@@ -6666,17 +7319,16 @@ INSTRUCTIONS:
         {/* Filters Chips Row */}
         <div className="flex flex-wrap gap-1 pb-1 max-w-full overflow-x-auto no-scrollbar">
           {[
-            'All', 'Reviewed', 'Pending', 'Signed', 'Unsigned', 'Expired', 
+            'All', 'Reviewed', 'Pending', 'Signed', 'Unsigned', 'Expired',
             'Lease', 'Employment', 'NDA', 'Commercial', 'Vendor', 'Property', 'Loan', 'Agreement'
           ].map(tag => (
             <button
               key={tag}
               onClick={() => setContractFilterType(tag)}
-              className={`px-2.5 py-0.5 border text-[8px] font-black uppercase tracking-wider rounded-lg transition-all shrink-0 ${
-                contractFilterType === tag
+              className={`px-2.5 py-0.5 border text-[8px] font-black uppercase tracking-wider rounded-lg transition-all shrink-0 ${contractFilterType === tag
                   ? 'bg-[#4F46E5] text-white border-[#4F46E5] shadow-xs'
                   : 'bg-white dark:bg-zinc-900 text-slate-655 dark:text-slate-400 border-slate-200 dark:border-zinc-855 hover:bg-slate-50'
-              }`}
+                }`}
             >
               {tag}
             </button>
@@ -6739,9 +7391,8 @@ INSTRUCTIONS:
                       <span className="px-1.5 py-0.5 bg-slate-105 dark:bg-zinc-855 rounded text-[7.5px] font-black uppercase tracking-wider text-slate-655 dark:text-slate-400">
                         {doc.category || 'Contract'}
                       </span>
-                      <span className={`px-1.5 py-0.5 rounded-full text-[7.5px] font-black uppercase tracking-wider border ${
-                        doc.signatureDetected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-550 border-slate-200'
-                      }`}>
+                      <span className={`px-1.5 py-0.5 rounded-full text-[7.5px] font-black uppercase tracking-wider border ${doc.signatureDetected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-550 border-slate-200'
+                        }`}>
                         {doc.signatureDetected ? 'Signed' : 'Unsigned'}
                       </span>
                       <span className={`px-1.5 py-0.5 border rounded text-[7.5px] font-black uppercase tracking-wider ${getRiskBadgeColor(riskScore)}`}>
@@ -6802,9 +7453,8 @@ INSTRUCTIONS:
                           {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : 'Recently'}
                         </td>
                         <td className="py-2.5 px-3">
-                          <span className={`px-1.5 py-0.5 rounded-full text-[7.5px] font-black uppercase tracking-wider border ${
-                            doc.signatureDetected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-550 border-slate-200'
-                          }`}>
+                          <span className={`px-1.5 py-0.5 rounded-full text-[7.5px] font-black uppercase tracking-wider border ${doc.signatureDetected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-550 border-slate-200'
+                            }`}>
                             {doc.signatureDetected ? 'Signed' : 'Unsigned'}
                           </span>
                         </td>
@@ -6893,19 +7543,19 @@ INSTRUCTIONS:
             Generate a complete case summary and upload supporting evidence before AI can construct courtroom arguments.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <button 
+            <button
               onClick={handleGenerateAiSummary}
               className="px-5 py-2.5 bg-[#4F46E5] hover:opacity-95 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-md transition-all animate-pulse"
             >
               Generate Summary
             </button>
-            <button 
+            <button
               onClick={() => document.getElementById('workspace-doc-upload').click()}
               className="px-5 py-2.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-705 dark:text-slate-350 font-black text-xs uppercase tracking-widest rounded-xl shadow-sm transition-all"
             >
               Upload Evidence
             </button>
-            <button 
+            <button
               onClick={() => triggerBackgroundResearchSync(caseData, true)}
               className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-sm transition-all"
             >
@@ -7028,13 +7678,13 @@ INSTRUCTIONS:
       ? rawOppPred
       : rawOppPred && typeof rawOppPred === 'object'
         ? [{
-            likelyArgument: rawOppPred.likelyDefense || rawOppPred.likelyArgument || 'Opponent defense strategy pending AI analysis.',
-            probability: rawOppPred.probability || '70%',
-            counterResponse: rawOppPred.recommendedCounter || rawOppPred.counterResponse || '',
-            winningStrategy: rawOppPred.recommendedCounter || rawOppPred.winningStrategy || '',
-            risk: rawOppPred.risk || 'Medium',
-            recommendation: rawOppPred.expectedObjections || rawOppPred.recommendation || ''
-          }]
+          likelyArgument: rawOppPred.likelyDefense || rawOppPred.likelyArgument || 'Opponent defense strategy pending AI analysis.',
+          probability: rawOppPred.probability || '70%',
+          counterResponse: rawOppPred.recommendedCounter || rawOppPred.counterResponse || '',
+          winningStrategy: rawOppPred.recommendedCounter || rawOppPred.winningStrategy || '',
+          risk: rawOppPred.risk || 'Medium',
+          recommendation: rawOppPred.expectedObjections || rawOppPred.recommendation || ''
+        }]
         : [];
 
     // argumentsRoster: ensure each item has an id
@@ -7132,7 +7782,7 @@ INSTRUCTIONS:
 
     return (
       <div className="flex flex-col space-y-4 animate-in fade-in duration-300">
-        
+
         {/* TOP COMPACT KPI OVERVIEW */}
         <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
           {[
@@ -7158,7 +7808,7 @@ INSTRUCTIONS:
 
         {/* WORKSPACE PANEL WITH LEFT SIDEBAR NAVIGATION */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          
+
           {/* LEFT SIDEBAR NAVIGATION */}
           <div className="lg:col-span-3 space-y-1">
             <div className="bg-white dark:bg-[#1A2540] border border-slate-150 dark:border-zinc-800/80 rounded-xl p-1.5 shadow-xs space-y-1 text-left">
@@ -7169,11 +7819,10 @@ INSTRUCTIONS:
                   <button
                     key={item.id}
                     onClick={() => setActiveArgumentsSubTab(item.id)}
-                    className={`w-full px-3 py-2 rounded-lg text-[9.5px] font-black uppercase tracking-wider transition-all flex items-center gap-2.5 ${
-                      activeArgumentsSubTab === item.id
+                    className={`w-full px-3 py-2 rounded-lg text-[9.5px] font-black uppercase tracking-wider transition-all flex items-center gap-2.5 ${activeArgumentsSubTab === item.id
                         ? 'bg-[#4F46E5] text-white shadow-xs font-extrabold'
                         : 'text-slate-505 hover:bg-slate-55 dark:text-slate-400 dark:hover:bg-zinc-800'
-                    }`}
+                      }`}
                   >
                     <Icon size={12} className="shrink-0" />
                     {item.label}
@@ -7185,14 +7834,14 @@ INSTRUCTIONS:
 
           {/* RIGHT MAIN CONTENT PANEL */}
           <div className="lg:col-span-9 bg-white dark:bg-[#1A2540] border border-slate-205 dark:border-zinc-800/80 rounded-xl p-4 min-h-[460px] flex flex-col shadow-xs text-left">
-            
+
             {/* SEARCH AND FILTERS TOOLBAR */}
             <div className="flex flex-col md:flex-row gap-2.5 items-center justify-between bg-slate-50/50 dark:bg-black/10 p-1.5 rounded-lg border border-slate-150 dark:border-zinc-800/40 mb-3.5">
               <div className="relative w-full md:w-64 shrink-0">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={11} />
-                <input 
-                  type="text" 
-                  placeholder="Search workspace..." 
+                <input
+                  type="text"
+                  placeholder="Search workspace..."
                   value={searchQueryArguments}
                   onChange={e => setSearchQueryArguments(e.target.value)}
                   className="w-full bg-white dark:bg-zinc-805 border border-slate-200 dark:border-zinc-700/80 rounded-md pl-7 pr-3 py-1 text-[10px] font-bold text-slate-808 dark:text-white outline-none placeholder:text-slate-400"
@@ -7201,14 +7850,13 @@ INSTRUCTIONS:
 
               <div className="flex flex-wrap gap-1 w-full md:w-auto justify-end">
                 {['All', 'Strong', 'Medium', 'Weak', 'Evidence Linked', 'Missing Evidence', 'High Risk'].map(tab => (
-                  <button 
+                  <button
                     key={tab}
                     onClick={() => setFilterArguments(tab)}
-                    className={`px-2.5 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded-lg border transition-all ${
-                      filterArguments === tab
+                    className={`px-2.5 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded-lg border transition-all ${filterArguments === tab
                         ? 'bg-slate-800 dark:bg-zinc-700 text-white border-slate-800 dark:border-zinc-650'
                         : 'bg-white dark:bg-zinc-900 text-slate-500 border-slate-200 dark:border-zinc-800 hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     {tab}
                   </button>
@@ -7345,9 +7993,9 @@ INSTRUCTIONS:
                               <span className="text-[7.5px] font-black uppercase text-slate-400 block tracking-wide border border-transparent pt-0.5">★★★★☆</span>
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center gap-1">
-                            <button 
+                            <button
                               onClick={() => {
                                 toast.success(`AI notes generated for argument: ${arg.title}`);
                               }}
@@ -7355,7 +8003,7 @@ INSTRUCTIONS:
                             >
                               AI Notes
                             </button>
-                            <button 
+                            <button
                               onClick={() => setExpandedArgumentId(isExpanded ? null : arg.id)}
                               className="p-1.5 rounded hover:bg-slate-55 dark:hover:bg-zinc-805 text-slate-405"
                             >
@@ -7391,7 +8039,7 @@ INSTRUCTIONS:
                               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Counter Strategy</span>
                               <p className="text-emerald-705 mt-0.5">{arg.counterStrategy}</p>
                             </div>
-                            
+
                             <div className="flex gap-1.5 pt-2 border-t border-slate-50 dark:border-zinc-800/30 justify-end flex-wrap">
                               <button onClick={() => toast.success("Drafting oral submission transcript...")} className="px-2.5 py-1 bg-indigo-50 text-[#4F46E5] text-[8px] font-black uppercase tracking-wider rounded">Oral Submission</button>
                               <button onClick={() => toast.success("Compiling written legal arguments draft...")} className="px-2.5 py-1 bg-indigo-50 text-[#4F46E5] text-[8px] font-black uppercase tracking-wider rounded">Written Draft</button>
@@ -7459,8 +8107,8 @@ INSTRUCTIONS:
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {(safeAiArgs.evidenceMapping || []).map((item, idx) => (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       onClick={() => toast.success(`Showing links for evidence: ${item.name}`)}
                       className="p-3 bg-slate-50/50 dark:bg-black/10 hover:border-indigo-400 rounded-xl border border-slate-150/40 flex items-center justify-between text-xs font-semibold cursor-pointer transition-all duration-200 group"
                     >
@@ -7468,11 +8116,10 @@ INSTRUCTIONS:
                         <span className="text-slate-808 dark:text-white font-bold leading-tight truncate block group-hover:text-[#4F46E5]">{item.name}</span>
                         <span className="text-[7.5px] text-slate-400 block tracking-wide uppercase mt-0.5">Click to verify link</span>
                       </div>
-                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border shrink-0 ${
-                        item.status === 'Missing' ? 'bg-rose-50 text-red-650 border-rose-150' : 
-                        item.status === 'Recommended' ? 'bg-amber-50 text-amber-655 border-amber-200' :
-                        'bg-emerald-50 text-emerald-650 border-emerald-250/20'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border shrink-0 ${item.status === 'Missing' ? 'bg-rose-50 text-red-650 border-rose-150' :
+                          item.status === 'Recommended' ? 'bg-amber-50 text-amber-655 border-amber-200' :
+                            'bg-emerald-50 text-emerald-650 border-emerald-250/20'
+                        }`}>
                         {item.status === 'Linked' ? '✔ Linked' : item.status}
                       </span>
                     </div>
@@ -7522,7 +8169,7 @@ INSTRUCTIONS:
                       </div>
 
                       <div className="flex justify-end pt-2 border-t border-slate-50 dark:border-zinc-800/40">
-                        <button 
+                        <button
                           onClick={() => toast.success(`Generated condonation petition draft for delay risk!`)}
                           className="px-3 py-1 bg-indigo-50 text-[#4F46E5] text-[9px] font-black uppercase tracking-wider rounded-lg"
                         >
@@ -7549,11 +8196,11 @@ INSTRUCTIONS:
                     return (
                       <div key={idx} className="relative">
                         <div className="absolute -left-[26px] top-1 w-3 h-3 bg-indigo-500 rounded-full border-2 border-white dark:border-zinc-900 shadow-sm"></div>
-                        
+
                         <div className="bg-slate-50/50 dark:bg-black/10 border border-slate-100 dark:border-zinc-800/40 rounded-xl p-3 text-left space-y-1">
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-[8.5px] font-black text-indigo-650 uppercase tracking-widest block">{step.stage} Presentation</span>
-                            <button 
+                            <button
                               onClick={() => setExpandedSequenceSteps(prev => ({ ...prev, [idx]: !prev[idx] }))}
                               className="text-[8px] font-black uppercase text-[#4F46E5] hover:underline"
                             >
@@ -7561,7 +8208,7 @@ INSTRUCTIONS:
                             </button>
                           </div>
                           <p className="text-xs font-semibold text-slate-705 dark:text-slate-350 leading-relaxed">{step.detail}</p>
-                          
+
                           {isStepExpanded && (
                             <p className="text-[9.5px] text-slate-400 font-medium italic mt-2 pl-2 border-l border-indigo-200">
                               Instruction: {step.expandableText}
@@ -7593,7 +8240,7 @@ INSTRUCTIONS:
                             <Users size={13} className="text-[#4F46E5]" />
                             <h5 className="text-xs font-black text-slate-808 dark:text-white uppercase tracking-wider">{witness.name}</h5>
                           </div>
-                          <button 
+                          <button
                             onClick={() => setExpandedWitnessIds(prev => ({ ...prev, [wIdx]: !prev[wIdx] }))}
                             className="text-[8.5px] font-black uppercase text-[#4F46E5] hover:underline"
                           >
@@ -7647,7 +8294,7 @@ INSTRUCTIONS:
                   <span className="text-[8px] font-black uppercase text-indigo-650">Auto-saves to Case file</span>
                 </div>
 
-                <textarea 
+                <textarea
                   placeholder="Advocate: Type private observations, judge remarks, and next action checklist here during hearing..."
                   className="w-full bg-slate-50/50 dark:bg-black/10 border border-slate-200 dark:border-zinc-800 rounded-xl p-3 text-[10.5px] font-bold text-slate-808 dark:text-white outline-none focus:border-indigo-400 resize-none flex-1 min-h-[220px]"
                 />
@@ -7799,7 +8446,7 @@ INSTRUCTIONS:
 
     return (
       <div className="space-y-4 animate-in fade-in duration-300">
-        
+
         {/* TOP CONTROL HUB */}
         <div className="bg-white dark:bg-[#1A2540] border border-slate-200 dark:border-zinc-800/80 rounded-2xl px-4 py-3 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
           <div className="flex items-center gap-3">
@@ -7826,11 +8473,11 @@ INSTRUCTIONS:
 
         {/* 3-COLUMN ENTERPRISE LAYOUT */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
-          
+
           {/* COLUMN 1: COMPACT NOTES LIST (WIDTH: 3/12) */}
           <div className="lg:col-span-3 space-y-3 flex flex-col text-left max-h-[220px] lg:max-h-none overflow-y-auto lg:overflow-visible">
             <div className="bg-white dark:bg-[#1A2540] border border-slate-150 dark:border-zinc-800/85 rounded-xl p-3 shadow-2xs space-y-3 flex-1">
-              
+
               {/* Search note bar */}
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={11} />
@@ -7846,21 +8493,20 @@ INSTRUCTIONS:
               {/* Filters list */}
               <div className="flex flex-wrap gap-1 border-b border-slate-50 dark:border-zinc-800/50 pb-2">
                 {[
-                  { id: 'all',      label: 'All' },
-                  { id: 'pinned',   label: '📌 Pinned' },
-                  { id: 'hearing',  label: '⚖ Hearing' },
+                  { id: 'all', label: 'All' },
+                  { id: 'pinned', label: '📌 Pinned' },
+                  { id: 'hearing', label: '⚖ Hearing' },
                   { id: 'strategy', label: '🧠 Strategy' },
-                  { id: 'witness',  label: '👥 Witness' },
+                  { id: 'witness', label: '👥 Witness' },
                   { id: 'research', label: '📓 Research' }
                 ].map(f => (
                   <button
                     key={f.id}
                     onClick={() => setNotesFilterType(f.id)}
-                    className={`px-2 py-0.5 border text-[7.5px] font-black uppercase tracking-wider rounded transition-all ${
-                      notesFilterType === f.id
+                    className={`px-2 py-0.5 border text-[7.5px] font-black uppercase tracking-wider rounded transition-all ${notesFilterType === f.id
                         ? 'bg-slate-800 dark:bg-zinc-700 text-white border-slate-800'
                         : 'bg-white dark:bg-zinc-900 text-slate-500 border-slate-200 dark:border-zinc-850 hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     {f.label}
                   </button>
@@ -7876,11 +8522,10 @@ INSTRUCTIONS:
                       <button
                         key={n.id}
                         onClick={() => setActiveNoteId(n.id)}
-                        className={`w-full text-left p-2.5 rounded-lg border transition-all block ${
-                          activeNoteId === n.id
+                        className={`w-full text-left p-2.5 rounded-lg border transition-all block ${activeNoteId === n.id
                             ? 'border-[#4F46E5] bg-indigo-50/10 text-[#4F46E5] shadow-2xs'
                             : 'border-slate-100 dark:border-zinc-800 hover:bg-slate-55'
-                        }`}
+                          }`}
                       >
                         <div className="flex justify-between items-center gap-1">
                           <span className="font-extrabold text-[10px] uppercase truncate max-w-[120px]">{n.title || 'Untitled note'}</span>
@@ -7905,11 +8550,10 @@ INSTRUCTIONS:
                       <button
                         key={n.id}
                         onClick={() => setActiveNoteId(n.id)}
-                        className={`w-full text-left p-2.5 rounded-lg border transition-all block ${
-                          activeNoteId === n.id
+                        className={`w-full text-left p-2.5 rounded-lg border transition-all block ${activeNoteId === n.id
                             ? 'border-[#4F46E5] bg-indigo-50/10 text-[#4F46E5] shadow-2xs'
                             : 'border-slate-100 dark:border-zinc-800 hover:bg-slate-55'
-                        }`}
+                          }`}
                       >
                         <div className="flex justify-between items-center gap-1">
                           <span className="font-extrabold text-[10px] uppercase truncate max-w-[120px]">{n.title || 'Untitled note'}</span>
@@ -7938,7 +8582,7 @@ INSTRUCTIONS:
           {activeNote ? (
             <div className="lg:col-span-6 space-y-3 flex flex-col text-left">
               <div className="bg-white dark:bg-[#1A2540] border border-slate-150 dark:border-zinc-805/85 rounded-xl p-4 shadow-2xs flex-1 flex flex-col space-y-3.5">
-                
+
                 {/* Editor Header Details */}
                 <div className="flex items-center justify-between gap-3 border-b border-slate-50 dark:border-zinc-800 pb-2">
                   <div className="flex items-center gap-2">
@@ -7988,18 +8632,18 @@ INSTRUCTIONS:
                   <button onClick={() => handleUpdateNoteField(activeNote.id, 'content', (activeNote.content || '') + ' **Bold**')} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white" title="Bold"><strong className="font-extrabold text-[9px] uppercase">B</strong></button>
                   <button onClick={() => handleUpdateNoteField(activeNote.id, 'content', (activeNote.content || '') + ' *Italic*')} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white" title="Italic"><span className="italic text-[9px] font-black">I</span></button>
                   <button onClick={() => handleUpdateNoteField(activeNote.id, 'content', (activeNote.content || '') + '\n- Bullet Point')} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white" title="Bullet List" size={10}><List size={10} /></button>
-                  
+
                   <span className="text-slate-300 dark:text-slate-750 px-0.5">|</span>
-                  
+
                   {/* Smart Checklist item addition */}
-                  <button 
+                  <button
                     onClick={() => {
                       const itemText = prompt("Enter checklist task:", "Prepare exhibit file prints");
                       if (itemText) {
                         const updatedList = [...(activeNote.checklist || []), { text: itemText, checked: false }];
                         handleUpdateNoteField(activeNote.id, 'checklist', updatedList);
                       }
-                    }} 
+                    }}
                     className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center gap-1 text-[8.5px] font-black uppercase"
                   >
                     <Square size={10} /> + Checklist
@@ -8010,11 +8654,10 @@ INSTRUCTIONS:
                   {/* Voice recording simulation button */}
                   <button
                     onClick={toggleVoiceRecording}
-                    className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider flex items-center gap-1 transition-all ${
-                      isRecordingVoice 
-                        ? 'bg-rose-500 text-white animate-pulse' 
+                    className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider flex items-center gap-1 transition-all ${isRecordingVoice
+                        ? 'bg-rose-500 text-white animate-pulse'
                         : 'bg-indigo-50 text-[#4F46E5]'
-                    }`}
+                      }`}
                   >
                     <Mic size={9} /> {isRecordingVoice ? `Recording ${formatTimer(voiceTimer)}` : 'Voice Note'}
                   </button>
@@ -8040,11 +8683,11 @@ INSTRUCTIONS:
 
                     {/* Progress indicator bar */}
                     <div className="w-full bg-slate-150 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden shrink-0">
-                      <div 
-                        className="bg-[#4F46E5] h-full transition-all" 
-                        style={{ 
-                          width: `${(activeNote.checklist.filter(c => c.checked).length / activeNote.checklist.length) * 100}%` 
-                        }} 
+                      <div
+                        className="bg-[#4F46E5] h-full transition-all"
+                        style={{
+                          width: `${(activeNote.checklist.filter(c => c.checked).length / activeNote.checklist.length) * 100}%`
+                        }}
                       />
                     </div>
 
@@ -8052,8 +8695,8 @@ INSTRUCTIONS:
                     <div className="space-y-1.5 pt-1">
                       {activeNote.checklist.map((item, idx) => (
                         <label key={idx} className="flex items-center gap-2 text-[10px] font-semibold text-slate-705 cursor-pointer hover:text-slate-900 select-none">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={item.checked}
                             onChange={() => {
                               const updatedChecklist = activeNote.checklist.map((c, i) => i === idx ? { ...c, checked: !c.checked } : c);
@@ -8091,7 +8734,7 @@ INSTRUCTIONS:
           {/* COLUMN 3: AI SIDEBAR & AUTO-LINKS (WIDTH: 3/12) */}
           <div className="lg:col-span-3 space-y-3 flex flex-col text-left">
             <div className="bg-white dark:bg-[#1A2540] border border-slate-150 dark:border-zinc-800/85 rounded-xl p-3 shadow-2xs space-y-3 flex-1 flex flex-col">
-              
+
               <div className="flex items-center gap-1.5 border-b border-slate-50 dark:border-zinc-800 pb-2">
                 <Sparkles size={13} className="text-[#4F46E5]" />
                 <span className="text-[9px] font-black text-slate-808 dark:text-white uppercase tracking-wider">AI Assistant Sidebar</span>
@@ -8099,14 +8742,14 @@ INSTRUCTIONS:
 
               {/* Related case assets list */}
               <div className="space-y-3 flex-1 overflow-y-auto max-h-[320px] scrollbar-none text-[9.5px] font-semibold text-slate-505 leading-snug pr-0.5">
-                
+
                 {/* Related Documents */}
                 <div className="space-y-1">
                   <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest block">Related Documents ({caseData.documents?.length || 0})</span>
                   <div className="space-y-1">
                     {(caseData.documents || []).slice(0, 3).map((d, i) => (
-                      <button 
-                        key={i} 
+                      <button
+                        key={i}
                         onClick={() => { setActiveTab('documents'); handleOpenDoc(d); }}
                         className="w-full text-left p-1.5 bg-slate-50/50 dark:bg-zinc-900/50 hover:bg-indigo-50/10 rounded border border-transparent hover:border-[#4F46E5] truncate block uppercase text-[8.5px] tracking-wide"
                       >
@@ -8121,8 +8764,8 @@ INSTRUCTIONS:
                   <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest block">Related Evidence ({caseData.evidence?.length || 0})</span>
                   <div className="space-y-1">
                     {(caseData.evidence || []).slice(0, 3).map((e, idx) => (
-                      <button 
-                        key={idx} 
+                      <button
+                        key={idx}
                         onClick={() => { setActiveTab('evidence'); handleOpenDoc(e); }}
                         className="w-full text-left p-1.5 bg-slate-50/50 dark:bg-zinc-900/50 hover:bg-indigo-50/10 rounded border border-transparent hover:border-[#4F46E5] truncate block uppercase text-[8.5px] tracking-wide"
                       >
@@ -8137,8 +8780,8 @@ INSTRUCTIONS:
                   <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest block">Related Contracts ({caseData.contracts?.length || 0})</span>
                   <div className="space-y-1">
                     {(caseData.contracts || []).slice(0, 3).map((c, idx) => (
-                      <button 
-                        key={idx} 
+                      <button
+                        key={idx}
                         onClick={() => { setActiveTab('contracts'); handleTriggerContractAnalysis(c); }}
                         className="w-full text-left p-1.5 bg-slate-50/50 dark:bg-zinc-900/50 hover:bg-indigo-50/10 rounded border border-transparent hover:border-[#4F46E5] truncate block uppercase text-[8.5px] tracking-wide"
                       >
@@ -8153,7 +8796,7 @@ INSTRUCTIONS:
                   <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest block">Linked Arguments</span>
                   <div className="space-y-1">
                     {(caseData.aiArguments?.argumentsRoster || []).slice(0, 2).map((a, i) => (
-                      <button 
+                      <button
                         key={i}
                         onClick={() => { setActiveTab('arguments'); setActiveArgumentsSubTab('arguments'); }}
                         className="w-full text-left p-1.5 bg-indigo-50/5 hover:bg-indigo-50/10 rounded border border-transparent hover:border-[#4F46E5] truncate block uppercase text-[8.5px] tracking-wide text-indigo-650 font-black"
@@ -8177,27 +8820,27 @@ INSTRUCTIONS:
               {/* AI ACTION BUTTONS WRAPPER */}
               <div className="border-t border-slate-50 dark:border-zinc-800 pt-3 space-y-1.5 shrink-0 text-left">
                 <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest block">AI Strategy Actions</span>
-                
+
                 <div className="grid grid-cols-2 gap-1.5">
                   <button onClick={() => runAiActionOnNote('Summarize')} className="py-1 bg-slate-55 dark:bg-zinc-800 text-[8px] font-black uppercase tracking-wider rounded border border-slate-150 dark:border-zinc-850 hover:bg-slate-100">📝 Summarize</button>
                   <button onClick={() => runAiActionOnNote('Rewrite')} className="py-1 bg-slate-55 dark:bg-zinc-800 text-[8px] font-black uppercase tracking-wider rounded border border-slate-150 dark:border-zinc-850 hover:bg-slate-100">✨ Polish</button>
                   <button onClick={() => runAiActionOnNote('Extract Tasks')} className="py-1 bg-slate-55 dark:bg-zinc-800 text-[8px] font-black uppercase tracking-wider rounded border border-slate-150 dark:border-zinc-850 hover:bg-slate-100">✔ Tasks</button>
                   <button onClick={() => runAiActionOnNote('Suggest Relevant Laws')} className="py-1 bg-indigo-50 dark:bg-indigo-950/20 text-[#4F46E5] text-[8px] font-black uppercase tracking-wider rounded border border-indigo-100/10 hover:bg-indigo-100/50">⚖ Suggest Laws</button>
                 </div>
-                </div>
+              </div>
 
-                <button
-                  onClick={() => {
-                    if (!activeNote || !activeNote.content) {
-                      toast.error("Please add content to the note first.");
-                      return;
-                    }
-                    toast.success("Draft compiled successfully from note contents!");
-                  }}
-                  className="w-full py-1.5 bg-[#4F46E5] hover:opacity-95 text-white font-black text-[8px] uppercase tracking-wider rounded-lg text-center block shadow-xs"
-                >
-                  Convert into Legal Brief
-                </button>
+              <button
+                onClick={() => {
+                  if (!activeNote || !activeNote.content) {
+                    toast.error("Please add content to the note first.");
+                    return;
+                  }
+                  toast.success("Draft compiled successfully from note contents!");
+                }}
+                className="w-full py-1.5 bg-[#4F46E5] hover:opacity-95 text-white font-black text-[8px] uppercase tracking-wider rounded-lg text-center block shadow-xs"
+              >
+                Convert into Legal Brief
+              </button>
 
             </div>
           </div>
@@ -8311,14 +8954,14 @@ INSTRUCTIONS:
     });
 
     const toggleBookmark = (id) => {
-      setBookmarkedPrecedentIds(prev => 
+      setBookmarkedPrecedentIds(prev =>
         prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
       );
       toast.success(bookmarkedPrecedentIds.includes(id) ? 'Precedent removed from bookmarks' : 'Precedent saved to bookmarks!');
     };
 
     const toggleCompare = (id) => {
-      setComparedPrecedentIds(prev => 
+      setComparedPrecedentIds(prev =>
         prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
       );
     };
@@ -8327,7 +8970,7 @@ INSTRUCTIONS:
       <div className="flex flex-col gap-6 animate-in fade-in duration-300 items-start text-left w-full">
         {/* Main Column (100% width) */}
         <div className="space-y-4 w-full">
-          
+
           {/* Header Action Bar with Filters */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white dark:bg-[#131c31] border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm w-full">
             <div>
@@ -8336,11 +8979,11 @@ INSTRUCTIONS:
               </h4>
               <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Precedents matching transaction facts and governing clauses</p>
             </div>
-            
+
             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
               <div className="relative w-full md:w-48">
                 <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
+                <input
                   type="text"
                   value={precedentsSearchQuery}
                   onChange={e => setPrecedentsSearchQuery(e.target.value)}
@@ -8388,21 +9031,20 @@ INSTRUCTIONS:
             {filteredPrecedents.map((p) => {
               const isExpanded = expandedPrecedentId === p.id;
               const isBookmarked = bookmarkedPrecedentIds.includes(p.id);
-              
+
               return (
-                <div 
-                  key={p.id} 
+                <div
+                  key={p.id}
                   className="bg-white dark:bg-[#131c31] border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#4F46E5] text-left"
                 >
                   {/* Card Header Row */}
                   <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                          p.landmark 
-                            ? 'bg-rose-50 text-rose-600 border border-rose-200/30 dark:bg-rose-955/20 dark:text-rose-400' 
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${p.landmark
+                            ? 'bg-rose-50 text-rose-600 border border-rose-200/30 dark:bg-rose-955/20 dark:text-rose-400'
                             : 'bg-indigo-50 text-[#4F46E5] border border-indigo-200/30 dark:bg-indigo-955/20 dark:text-indigo-400'
-                        }`}>
+                          }`}>
                           {p.courtType}
                         </span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase">{p.court} • {p.year}</span>
@@ -8417,15 +9059,14 @@ INSTRUCTIONS:
                         <span className="text-[9px] text-emerald-600 font-black tracking-wide block">Relevance Score: {p.relevanceScore}%</span>
                         <span className="text-[8px] text-slate-400 font-bold block mt-0.5">AI Conf: {p.confidence}%</span>
                       </div>
-                      
+
                       {/* Action Icon Bookmark */}
-                      <button 
+                      <button
                         onClick={() => toggleBookmark(p.id)}
-                        className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-                          isBookmarked 
-                            ? 'bg-indigo-50 border-indigo-200 text-[#4F46E5] dark:bg-indigo-955/20 dark:border-indigo-900' 
+                        className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${isBookmarked
+                            ? 'bg-indigo-50 border-indigo-200 text-[#4F46E5] dark:bg-indigo-955/20 dark:border-indigo-900'
                             : 'border-slate-100 dark:border-zinc-800 text-slate-400 hover:text-slate-700'
-                        }`}
+                          }`}
                         title={isBookmarked ? "Bookmarked" : "Bookmark"}
                       >
                         <Bookmark size={13} fill={isBookmarked ? 'currentColor' : 'none'} />
@@ -8436,7 +9077,7 @@ INSTRUCTIONS:
                   {/* Citation Row */}
                   <div className="text-[10px] font-bold text-slate-450 dark:text-slate-400 mb-3 bg-slate-50 dark:bg-zinc-900/40 p-2 rounded-xl border border-slate-100 dark:border-zinc-800/60 flex items-center justify-between">
                     <span>Citation: <strong>{p.citation}</strong></span>
-                    <button 
+                    <button
                       onClick={() => { navigator.clipboard.writeText(p.citation); toast.success("Citation copied!"); }}
                       className="text-[#4F46E5] hover:underline uppercase text-[8px] cursor-pointer"
                     >
@@ -8503,7 +9144,7 @@ INSTRUCTIONS:
                   <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 dark:border-zinc-805/50">
                     <div className="flex items-center gap-1.5">
                       <label className="flex items-center gap-1.5 text-[9px] font-black uppercase text-slate-455 cursor-pointer">
-                        <input 
+                        <input
                           type="checkbox"
                           checked={comparedPrecedentIds.includes(p.id)}
                           onChange={() => toggleCompare(p.id)}
@@ -8514,13 +9155,13 @@ INSTRUCTIONS:
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button 
+                      <button
                         onClick={() => setExpandedPrecedentId(isExpanded ? null : p.id)}
                         className="px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-[#4F46E5] hover:underline cursor-pointer"
                       >
                         {isExpanded ? "Collapse Analysis" : "View AI Analysis..."}
                       </button>
-                      <button 
+                      <button
                         onClick={() => {
                           const updated = [
                             {
@@ -8622,17 +9263,17 @@ INSTRUCTIONS:
     // ─────── colour helpers ─────────────────────────────────────────
     const priorityChip = (p) => {
       const map = {
-        High:   'bg-rose-50   text-rose-600  dark:bg-rose-950/30  dark:text-rose-400  border-rose-200/40',
+        High: 'bg-rose-50   text-rose-600  dark:bg-rose-950/30  dark:text-rose-400  border-rose-200/40',
         Medium: 'bg-amber-50  text-amber-600 dark:bg-amber-950/30 dark:text-amber-400 border-amber-200/40',
-        Low:    'bg-slate-100 text-slate-500 dark:bg-zinc-800     dark:text-slate-400 border-slate-200/40',
+        Low: 'bg-slate-100 text-slate-500 dark:bg-zinc-800     dark:text-slate-400 border-slate-200/40',
       };
       return map[p] || map.Low;
     };
     const statusChip = (s) => {
       const map = {
-        'Todo':        'bg-slate-100  text-slate-500  dark:bg-zinc-800      dark:text-slate-400',
+        'Todo': 'bg-slate-100  text-slate-500  dark:bg-zinc-800      dark:text-slate-400',
         'In Progress': 'bg-blue-50    text-blue-600   dark:bg-blue-950/30   dark:text-blue-400',
-        'Done':        'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400',
+        'Done': 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400',
       };
       return map[s] || map['Todo'];
     };
@@ -8656,13 +9297,12 @@ INSTRUCTIONS:
           <div className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50/70 dark:hover:bg-zinc-900/40 transition-colors">
             {/* Status toggle circle */}
             <button onClick={() => handleToggle(task)} title={task.status === 'Done' ? 'Mark incomplete' : 'Mark complete'} className="shrink-0 cursor-pointer">
-              <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                task.status === 'Done' ? 'bg-emerald-500 border-emerald-500'
-                : task.group === 'overdue' ? 'border-red-400'
-                : 'border-slate-300 dark:border-zinc-600 hover:border-[#4F46E5]'
-              }`}>
+              <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center transition-colors ${task.status === 'Done' ? 'bg-emerald-500 border-emerald-500'
+                  : task.group === 'overdue' ? 'border-red-400'
+                    : 'border-slate-300 dark:border-zinc-600 hover:border-[#4F46E5]'
+                }`}>
                 {task.status === 'Done' && (
-                  <svg width="7" height="7" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.5 6L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="7" height="7" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.5 6L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 )}
               </span>
             </button>
@@ -8675,10 +9315,9 @@ INSTRUCTIONS:
             {/* Title */}
             <span
               onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-              className={`flex-1 min-w-0 text-[11px] font-semibold truncate cursor-pointer leading-none ${
-                task.status === 'Done' ? 'line-through text-slate-400 dark:text-slate-600'
-                : 'text-slate-800 dark:text-white hover:text-[#4F46E5]'
-              }`}
+              className={`flex-1 min-w-0 text-[11px] font-semibold truncate cursor-pointer leading-none ${task.status === 'Done' ? 'line-through text-slate-400 dark:text-slate-600'
+                  : 'text-slate-800 dark:text-white hover:text-[#4F46E5]'
+                }`}
             >
               {task.title}
             </span>
@@ -8807,9 +9446,9 @@ INSTRUCTIONS:
     );
 
     const groups = [
-      { key: 'overdue',   label: 'Overdue',   color: 'bg-red-500',     filter: t => t.group === 'overdue' },
-      { key: 'today',     label: 'Today',     color: 'bg-amber-500',   filter: t => t.group === 'today' },
-      { key: 'upcoming',  label: 'Upcoming',  color: 'bg-[#4F46E5]',   filter: t => t.group === 'upcoming' },
+      { key: 'overdue', label: 'Overdue', color: 'bg-red-500', filter: t => t.group === 'overdue' },
+      { key: 'today', label: 'Today', color: 'bg-amber-500', filter: t => t.group === 'today' },
+      { key: 'upcoming', label: 'Upcoming', color: 'bg-[#4F46E5]', filter: t => t.group === 'upcoming' },
       { key: 'completed', label: 'Completed', color: 'bg-emerald-500', filter: t => t.group === 'completed' },
     ];
 
@@ -8827,20 +9466,19 @@ INSTRUCTIONS:
           {/* View toggle pills */}
           <div className="flex items-center bg-slate-100 dark:bg-zinc-800/80 rounded-lg p-0.5 gap-0.5">
             {[
-              { v: 'list',     label: 'List',     icon: <List size={11} /> },
-              { v: 'kanban',   label: 'Kanban',   icon: <LayoutGrid size={11} /> },
-              { v: 'table',    label: 'Table',    icon: <Table2 size={11} /> },
+              { v: 'list', label: 'List', icon: <List size={11} /> },
+              { v: 'kanban', label: 'Kanban', icon: <LayoutGrid size={11} /> },
+              { v: 'table', label: 'Table', icon: <Table2 size={11} /> },
               { v: 'calendar', label: 'Calendar', icon: <CalendarDays size={11} /> },
             ].map(({ v, label, icon }) => (
               <button
                 key={v}
                 onClick={() => setTaskViewMode(v)}
                 title={label}
-                className={`px-2 py-1 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                  taskViewMode === v
+                className={`px-2 py-1 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 ${taskViewMode === v
                     ? 'bg-white dark:bg-zinc-700 text-[#4F46E5] shadow-sm'
                     : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                }`}
+                  }`}
               >
                 {icon}<span className="hidden sm:inline">{label}</span>
               </button>
@@ -8921,9 +9559,9 @@ INSTRUCTIONS:
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-3">
             {['Todo', 'In Progress', 'Done', 'Overdue'].map((col) => {
               const colTasks = filtered.filter(t => {
-                if (col === 'Overdue')     return t.group === 'overdue';
-                if (col === 'Done')        return t.status === 'Done';
-                if (col === 'Todo')        return t.status === 'Todo' && t.group !== 'overdue';
+                if (col === 'Overdue') return t.group === 'overdue';
+                if (col === 'Done') return t.status === 'Done';
+                if (col === 'Todo') return t.status === 'Todo' && t.group !== 'overdue';
                 if (col === 'In Progress') return t.status === 'In Progress' && t.group !== 'overdue';
                 return false;
               });
@@ -9007,7 +9645,7 @@ INSTRUCTIONS:
         {taskViewMode === 'calendar' && (
           <div className="border-x border-b border-slate-200 dark:border-zinc-800 rounded-b-2xl bg-white dark:bg-[#0f1624] overflow-hidden">
             <div className="grid grid-cols-7 border-b border-slate-100 dark:border-zinc-800">
-              {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
                 <div key={d} className="py-2 text-center text-[8px] font-black uppercase text-slate-400 tracking-widest border-r border-slate-100 dark:border-zinc-800 last:border-r-0">{d}</div>
               ))}
             </div>
@@ -9018,7 +9656,7 @@ INSTRUCTIONS:
                 const dayTasks = filtered.filter(t => t.dueDate === dayDateStr);
                 const isTodayCell = dayDateStr === new Date().toISOString().split('T')[0];
                 return (
-                  <div key={i} className={`min-h-[64px] border-r border-b border-slate-100 dark:border-zinc-800/60 last:border-r-0 p-1.5 flex flex-col gap-1 ${ isTodayCell ? 'bg-indigo-50/40 dark:bg-indigo-950/10' : ''}`}>
+                  <div key={i} className={`min-h-[64px] border-r border-b border-slate-100 dark:border-zinc-800/60 last:border-r-0 p-1.5 flex flex-col gap-1 ${isTodayCell ? 'bg-indigo-50/40 dark:bg-indigo-950/10' : ''}`}>
                     <span className={`text-[9px] font-bold self-start w-5 h-5 flex items-center justify-center rounded-full ${isTodayCell ? 'bg-[#4F46E5] text-white' : 'text-slate-400'}`}>{dayNum}</span>
                     {dayTasks.slice(0, 2).map(t => (
                       <span key={t.id} className={`block text-[7px] font-bold truncate px-1 py-0.5 rounded ${statusChip(t.status)}`} title={t.title}>{t.title}</span>
@@ -9038,7 +9676,7 @@ INSTRUCTIONS:
   const visibleSidebarMessages = aiMessages;
 
   return (
-    <>
+    <LocalizedContainer lang={toolkitLanguage}>
       {!isMobile && showAiAssistant && isAssistantMaximized && (
         <FullScreenCaseAssistant
           onRestore={() => setIsAssistantMaximized(false)}
@@ -9062,8 +9700,8 @@ INSTRUCTIONS:
               {/* Compact Mobile Header */}
               <div className="px-4 pt-3 pb-2 flex flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <button 
-                    onClick={onBack} 
+                  <button
+                    onClick={onBack}
                     className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 border border-[#E5E7EB] dark:border-zinc-700 bg-white dark:bg-zinc-900 shrink-0"
                   >
                     <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
@@ -9085,28 +9723,28 @@ INSTRUCTIONS:
 
               {/* Mobile Action Buttons */}
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide px-3 py-2 bg-gray-50/40 dark:bg-zinc-900/20 border-t border-[#E5E7EB] dark:border-zinc-800 select-none shrink-0" style={{ whiteSpace: 'nowrap', WebkitOverflowScrolling: 'touch' }}>
-                <button 
-                  onClick={openAssistant} 
+                <button
+                  onClick={openAssistant}
                   className="flex items-center justify-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold transition-all bg-indigo-50 dark:bg-indigo-950/40 text-[#4F46E5] shrink-0 min-h-[44px]"
                 >
                   <Sparkles size={12} className="text-[#4F46E5]" />
                   <span>Show AI</span>
                 </button>
-                <button 
+                <button
                   onClick={handleExportCaseFile}
                   className="flex items-center justify-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold transition-all border border-[#E5E7EB] dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-700 dark:text-gray-300 shrink-0 min-h-[44px]"
                 >
                   <Download size={12} />
                   <span>Export</span>
                 </button>
-                <button 
+                <button
                   onClick={handleShareCase}
                   className="flex items-center justify-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold transition-all border border-[#E5E7EB] dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-700 dark:text-gray-300 shrink-0 min-h-[44px]"
                 >
                   <Share2 size={12} />
                   <span>Share</span>
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     if (confirm("Are you sure you want to delete this case?")) {
                       onDelete(caseData.id || caseData._id);
@@ -9122,8 +9760,8 @@ INSTRUCTIONS:
             /* Desktop Sticky Header */
             <div className="px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
               <div className="flex items-center gap-3">
-                <button 
-                  onClick={onBack} 
+                <button
+                  onClick={onBack}
                   className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 transition-colors border border-[#E5E7EB] dark:border-zinc-700 bg-white dark:bg-zinc-900"
                 >
                   <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
@@ -9139,28 +9777,28 @@ INSTRUCTIONS:
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-1.5 sm:gap-2 self-stretch sm:self-auto justify-end flex-wrap">
-                <button 
-                  onClick={() => setShowAiAssistant(!showAiAssistant)} 
+                <button
+                  onClick={() => setShowAiAssistant(!showAiAssistant)}
                   className="px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-50 dark:bg-indigo-950/40 text-[#4F46E5] hover:opacity-90 flex items-center gap-1.5 sm:gap-2 h-9 sm:h-9 min-h-[44px]"
                 >
                   <Sparkles size={14} className="text-[#4F46E5]" />
                   <span>{showAiAssistant ? "Hide AI" : "Show AI"}</span>
                 </button>
-                <button 
+                <button
                   onClick={handleExportCaseFile}
                   className="px-4 py-2 rounded-full text-xs font-bold transition-all border border-[#E5E7EB] dark:border-zinc-800 bg-white text-gray-700 hover:bg-gray-50 flex items-center gap-2 h-9"
                 >
                   <Download size={14} /> Export
                 </button>
-                <button 
+                <button
                   onClick={handleShareCase}
                   className="px-4 py-2 rounded-full text-xs font-bold transition-all border border-[#E5E7EB] dark:border-zinc-800 bg-white text-gray-700 hover:bg-gray-50 flex items-center gap-2 h-9"
                 >
                   <Share2 size={14} /> Share
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     if (confirm("Are you sure you want to delete this case?")) {
                       onDelete(caseData.id || caseData._id);
@@ -9179,8 +9817,8 @@ INSTRUCTIONS:
             {/* Left/Right Fade Gradients */}
             <div className={`absolute left-0 top-0 bottom-0 w-10 bg-gradient-to-r from-white dark:from-[#0b0c15] to-transparent pointer-events-none z-10 transition-opacity duration-300 ${showLeftFade ? 'opacity-100' : 'opacity-0'}`} />
             <div className={`absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white dark:from-[#0b0c15] to-transparent pointer-events-none z-10 transition-opacity duration-300 ${showRightFade ? 'opacity-100' : 'opacity-0'}`} />
-            
-            <div 
+
+            <div
               ref={tabsContainerRef}
               tabIndex={0}
               className="flex items-center gap-1 sm:gap-1.5 pt-1.5 sm:pt-2 px-6 pb-1.5 sm:pb-2 overflow-x-auto custom-scrollbar-thin shrink-0 scroll-smooth focus:outline-none select-none"
@@ -9191,11 +9829,10 @@ INSTRUCTIONS:
                   key={tab.id}
                   data-tab-id={tab.id}
                   onClick={(e) => handleTabClick(tab.id, e)}
-                  className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 rounded-xl text-[9px] sm:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border shrink-0 min-h-[36px] sm:min-h-[44px] cursor-pointer outline-none ${
-                    activeTab === tab.id 
-                    ? 'bg-[#4F46E5] border-[#4F46E5] text-white shadow-md shadow-[#4F46E5]/15' 
-                    : 'bg-transparent border-slate-100 hover:border-slate-200 dark:border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-50/50 dark:hover:bg-zinc-800/40'
-                  }`}
+                  className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 rounded-xl text-[9px] sm:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border shrink-0 min-h-[36px] sm:min-h-[44px] cursor-pointer outline-none ${activeTab === tab.id
+                      ? 'bg-[#4F46E5] border-[#4F46E5] text-white shadow-md shadow-[#4F46E5]/15'
+                      : 'bg-transparent border-slate-100 hover:border-slate-200 dark:border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-50/50 dark:hover:bg-zinc-800/40'
+                    }`}
                 >
                   <tab.icon size={13} className={activeTab === tab.id ? 'text-white' : 'text-slate-450 dark:text-slate-400'} />
                   <span>{tab.name}</span>
@@ -9232,225 +9869,220 @@ INSTRUCTIONS:
           {/* Right Sidebar Column (Col 3) - Desktop / Tablet */}
           {!isMobile && showAiAssistant && !isAssistantMaximized && (
             <div className="w-full sm:w-[300px] lg:w-[320px] xl:w-[360px] fixed right-0 top-0 sm:top-[73px] bottom-0 z-30 border-l border-[#E5E7EB] dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col shrink-0 overflow-hidden shadow-2xl sm:shadow-none">
-                {/* Panel Header */}
-                <div className="p-3 sm:p-4 border-b border-[#E5E7EB] dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900 select-none shrink-0">
-                  <div className="flex items-center gap-2">
-                    <Scale size={15} className="text-[#4F46E5]" />
-                    <div className="flex flex-col">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">⚖️ Case Assistant</h4>
-                      <span className="flex items-center gap-1 text-[9px] text-emerald-500 font-bold uppercase tracking-wide">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        AI Online
-                      </span>
+              {/* Panel Header */}
+              <div className="p-3 sm:p-4 border-b border-[#E5E7EB] dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900 select-none shrink-0">
+                <div className="flex items-center gap-2">
+                  <Scale size={15} className="text-[#4F46E5]" />
+                  <div className="flex flex-col">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">⚖️ Case Assistant</h4>
+                    <span className="flex items-center gap-1 text-[9px] text-emerald-500 font-bold uppercase tracking-wide">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      AI Online
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handleToggleSidebarHistory}
+                    className={`p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer border-none bg-transparent flex items-center gap-1 text-[10px] font-bold ${showSidebarHistory ? 'text-[#4F46E5]' : 'text-gray-400 hover:text-gray-600 dark:hover:text-white'
+                      }`}
+                    title="Chat History"
+                  >
+                    <History size={13} />
+                  </button>
+                  <button
+                    onClick={() => setIsAssistantMaximized(!isAssistantMaximized)}
+                    className="p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-zinc-800 text-gray-400 hover:text-gray-655 dark:hover:text-white transition-colors cursor-pointer border-none bg-transparent"
+                    title="Expand to fullscreen"
+                  >
+                    <Maximize2 size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Message List Container */}
+              <div
+                ref={sidebarScrollRef}
+                onScroll={handleSidebarScroll}
+                className="flex-1 overflow-y-auto p-4 space-y-4 text-xs scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent relative animate-in fade-in duration-200"
+              >
+                <>
+                  {!hasUserMessages && (
+                    <div className="p-4 bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/50 dark:border-indigo-900/30 rounded-2xl space-y-3 text-slate-700 dark:text-slate-350">
+                      <p className="font-bold text-xs text-indigo-750 dark:text-indigo-400">Welcome! I have loaded this case.</p>
+                      <p className="text-[11px] leading-relaxed">Ask me anything about:</p>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[10px] font-bold text-slate-650 dark:text-slate-400">
+                        <div className="flex items-center gap-1">
+                          <Check size={11} className="text-emerald-500 shrink-0" /> Evidence
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Check size={11} className="text-emerald-500 shrink-0" /> Timeline
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Check size={11} className="text-emerald-500 shrink-0" /> Drafts
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Check size={11} className="text-emerald-500 shrink-0" /> Arguments
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Check size={11} className="text-emerald-500 shrink-0" /> Laws & Acts
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Check size={11} className="text-emerald-500 shrink-0" /> Research
+                        </div>
+                        <div className="col-span-2 flex items-center gap-1">
+                          <Check size={11} className="text-emerald-500 shrink-0" /> Previous Orders
+                        </div>
+                      </div>
+                      <p className="text-[11px] pt-1">How can I help?</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button 
-                      onClick={handleToggleSidebarHistory}
-                      className={`p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer border-none bg-transparent flex items-center gap-1 text-[10px] font-bold ${
-                        showSidebarHistory ? 'text-[#4F46E5]' : 'text-gray-400 hover:text-gray-600 dark:hover:text-white'
-                      }`}
-                      title="Chat History"
-                    >
-                      <History size={13} />
-                    </button>
-                    <button 
-                      onClick={() => setIsAssistantMaximized(!isAssistantMaximized)}
-                      className="p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-zinc-800 text-gray-400 hover:text-gray-655 dark:hover:text-white transition-colors cursor-pointer border-none bg-transparent"
-                      title="Expand to fullscreen"
-                    >
-                      <Maximize2 size={13} />
-                    </button>
-                  </div>
-                </div>
+                  )}
 
-                {/* Message List Container */}
-                <div 
-                  ref={sidebarScrollRef}
-                  onScroll={handleSidebarScroll}
-                  className="flex-1 overflow-y-auto p-4 space-y-4 text-xs scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent relative animate-in fade-in duration-200"
-                >
-                  <>
-                    {!hasUserMessages && (
-                      <div className="p-4 bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/50 dark:border-indigo-900/30 rounded-2xl space-y-3 text-slate-700 dark:text-slate-350">
-                        <p className="font-bold text-xs text-indigo-750 dark:text-indigo-400">Welcome! I have loaded this case.</p>
-                        <p className="text-[11px] leading-relaxed">Ask me anything about:</p>
-                        <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[10px] font-bold text-slate-650 dark:text-slate-400">
-                          <div className="flex items-center gap-1">
-                            <Check size={11} className="text-emerald-500 shrink-0" /> Evidence
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Check size={11} className="text-emerald-500 shrink-0" /> Timeline
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Check size={11} className="text-emerald-500 shrink-0" /> Drafts
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Check size={11} className="text-emerald-500 shrink-0" /> Arguments
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Check size={11} className="text-emerald-500 shrink-0" /> Laws & Acts
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Check size={11} className="text-emerald-500 shrink-0" /> Research
-                          </div>
-                          <div className="col-span-2 flex items-center gap-1">
-                            <Check size={11} className="text-emerald-500 shrink-0" /> Previous Orders
-                          </div>
-                        </div>
-                        <p className="text-[11px] pt-1">How can I help?</p>
-                      </div>
-                    )}
-
-                    {visibleSidebarMessages.map((msg, i) => (
-                      <div key={i} className="flex flex-col animate-in slide-in-from-bottom-2 duration-200">
-                        <span className={`text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                          {msg.role === 'user' ? 'ADVOCATE' : 'AI ASSISTANT'}
-                        </span>
-                        <div className={`p-3 rounded-2xl max-w-[90%] leading-relaxed font-semibold ${
-                          msg.role === 'user'
-                            ? 'bg-[#4F46E5] text-white rounded-tr-none ml-auto'
-                            : 'bg-slate-50 dark:bg-zinc-800/30 border border-[#E5E7EB] dark:border-zinc-800 text-slate-700 dark:text-slate-350 rounded-tl-none mr-auto'
+                  {visibleSidebarMessages.map((msg, i) => (
+                    <div key={i} className="flex flex-col animate-in slide-in-from-bottom-2 duration-200">
+                      <span className={`text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                        {msg.role === 'user' ? 'ADVOCATE' : 'AI ASSISTANT'}
+                      </span>
+                      <div className={`p-3 rounded-2xl max-w-[90%] leading-relaxed font-semibold ${msg.role === 'user'
+                          ? 'bg-[#4F46E5] text-white rounded-tr-none ml-auto'
+                          : 'bg-slate-50 dark:bg-zinc-800/30 border border-[#E5E7EB] dark:border-zinc-800 text-slate-700 dark:text-slate-350 rounded-tl-none mr-auto'
                         }`}>
-                          {msg.role === 'user' ? (
-                            <p className="whitespace-pre-wrap">{msg.content}</p>
-                          ) : (
-                            <div className="prose prose-slate max-w-none dark:prose-invert">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownComponents}>
-                                {highlightLegalTerms(msg.content)}
-                              </ReactMarkdown>
-                            </div>
-                          )}
+                        {msg.role === 'user' ? (
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                        ) : (
+                          <div className="prose prose-slate max-w-none dark:prose-invert">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownComponents}>
+                              {highlightLegalTerms(msg.content)}
+                            </ReactMarkdown>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {isChatSending && (!visibleSidebarMessages.length || visibleSidebarMessages[visibleSidebarMessages.length - 1]?.role !== 'model') && (
+                    <div className="flex items-center gap-1.5 p-3 bg-slate-50 dark:bg-zinc-850 rounded-2xl rounded-tl-none border border-slate-200 dark:border-zinc-800 w-20">
+                      <div className="w-1.5 h-1.5 bg-[#4F46E5] rounded-full animate-bounce" />
+                      <div className="w-1.5 h-1.5 bg-[#4F46E5] rounded-full animate-bounce delay-100" />
+                      <div className="w-1.5 h-1.5 bg-[#4F46E5] rounded-full animate-bounce delay-200" />
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </>
+              </div>
+
+              {/* Bottom Chat Input Area */}
+              <div className="p-4 border-t border-[#E5E7EB] dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0 select-none">
+                <form onSubmit={handleSendAiMessage} className="flex items-center gap-2 pl-3 pr-4 py-2 bg-gray-50 dark:bg-zinc-850/50 border border-[#E5E7EB] dark:border-zinc-800 rounded-2xl w-full relative">
+                  {/* Plus button Actions Grid */}
+                  {showSidebarPlusMenu && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowSidebarPlusMenu(false)} />
+                      <div className="absolute bottom-full mb-3 left-2 z-50 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl p-3 space-y-2.5 font-sans select-none text-left">
+                        <div className="flex justify-between items-center pb-1.5 border-b border-slate-100">
+                          <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Quick AI Actions</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowSidebarPlusMenu(false)}
+                            className="text-slate-400 hover:text-slate-650 border-none bg-transparent cursor-pointer"
+                          >
+                            <X size={12} />
+                          </button>
                         </div>
-                      </div>
-                    ))}
-                    {isChatSending && (!visibleSidebarMessages.length || visibleSidebarMessages[visibleSidebarMessages.length - 1]?.role !== 'model') && (
-                      <div className="flex items-center gap-1.5 p-3 bg-slate-50 dark:bg-zinc-850 rounded-2xl rounded-tl-none border border-slate-200 dark:border-zinc-800 w-20">
-                        <div className="w-1.5 h-1.5 bg-[#4F46E5] rounded-full animate-bounce" />
-                        <div className="w-1.5 h-1.5 bg-[#4F46E5] rounded-full animate-bounce delay-100" />
-                        <div className="w-1.5 h-1.5 bg-[#4F46E5] rounded-full animate-bounce delay-200" />
-                      </div>
-                    )}
 
-                    <div ref={messagesEndRef} />
-                  </>
-                </div>
-
-                {/* Bottom Chat Input Area */}
-                <div className="p-4 border-t border-[#E5E7EB] dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0 select-none">
-                  <form onSubmit={handleSendAiMessage} className="flex items-center gap-2 pl-3 pr-4 py-2 bg-gray-50 dark:bg-zinc-850/50 border border-[#E5E7EB] dark:border-zinc-800 rounded-2xl w-full relative">
-                    {/* Plus button Actions Grid */}
-                    {showSidebarPlusMenu && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowSidebarPlusMenu(false)} />
-                        <div className="absolute bottom-full mb-3 left-2 z-50 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl p-3 space-y-2.5 font-sans select-none text-left">
-                          <div className="flex justify-between items-center pb-1.5 border-b border-slate-100">
-                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Quick AI Actions</span>
-                            <button 
-                              type="button" 
-                              onClick={() => setShowSidebarPlusMenu(false)}
-                              className="text-slate-400 hover:text-slate-650 border-none bg-transparent cursor-pointer"
+                        <div className="grid grid-cols-1 gap-1 max-h-[220px] overflow-y-auto custom-scrollbar p-0.5">
+                          {QUICK_AI_ACTIONS.map((action) => (
+                            <button
+                              key={action.name}
+                              type="button"
+                              onClick={() => {
+                                setShowSidebarPlusMenu(false);
+                                handleSendAiMessage(null, action.prompt);
+                              }}
+                              className="flex items-center gap-2.5 p-1.5 hover:bg-indigo-50/30 border border-transparent hover:border-[#4F46E5] rounded-xl text-[10px] font-bold text-slate-750 text-left transition-all cursor-pointer bg-transparent border-none"
                             >
-                              <X size={12} />
+                              <span className="p-1 bg-slate-50 rounded shadow-sm shrink-0">{getActionIcon(action.icon)}</span>
+                              <span className="truncate">{action.name}</span>
                             </button>
-                          </div>
-
-                          <div className="grid grid-cols-1 gap-1 max-h-[220px] overflow-y-auto custom-scrollbar p-0.5">
-                            {QUICK_AI_ACTIONS.map((action) => (
-                              <button
-                                key={action.name}
-                                type="button"
-                                onClick={() => {
-                                  setShowSidebarPlusMenu(false);
-                                  handleSendAiMessage(null, action.prompt);
-                                }}
-                                className="flex items-center gap-2.5 p-1.5 hover:bg-indigo-50/30 border border-transparent hover:border-[#4F46E5] rounded-xl text-[10px] font-bold text-slate-750 text-left transition-all cursor-pointer bg-transparent border-none"
-                              >
-                                <span className="p-1 bg-slate-50 rounded shadow-sm shrink-0">{getActionIcon(action.icon)}</span>
-                                <span className="truncate">{action.name}</span>
-                              </button>
-                            ))}
-                          </div>
+                          ))}
                         </div>
-                      </>
-                    )}
+                      </div>
+                    </>
+                  )}
 
-                    <button 
-                      type="button" 
-                      onClick={() => setShowSidebarPlusMenu(prev => !prev)}
-                      className={`p-2 transition-colors border-none bg-transparent cursor-pointer shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                        showSidebarPlusMenu ? 'text-[#4F46E5] bg-[#4F46E5]/10 rounded-xl' : 'text-gray-400 hover:text-[#4F46E5]'
-                      }`}
-                      title="Quick Actions"
-                    >
-                      <Plus size={16} />
-                    </button>
-
-                    <button 
-                      type="button" 
-                      onClick={() => document.getElementById('workspace-doc-upload').click()}
-                      className="p-2 text-gray-400 hover:text-[#4F46E5] transition-colors border-none bg-transparent cursor-pointer shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                      title="Upload Documents"
-                    >
-                      <Paperclip size={16} />
-                    </button>
-
-                    <input 
-                      type="text" 
-                      value={chatInput}
-                      onChange={(e) => handleChatInputChange(e.target.value)}
-                      placeholder="Type message..."
-                      className="flex-1 bg-transparent border-none text-[11px] font-semibold focus:ring-0 p-0 text-slate-700 dark:text-white outline-none min-w-0"
-                    />
-
-                    <button 
-                      type="button" 
-                      onClick={handleVoiceInputSidebar}
-                      className={`p-2 transition-colors border-none bg-transparent cursor-pointer shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                        isListeningSidebar ? 'text-red-500 animate-pulse' : 'text-gray-400 hover:text-[#4F46E5]'
-                      }`}
-                      title="Voice Input"
-                    >
-                      <Mic size={16} />
-                    </button>
-
-                    {isChatSending ? (
-                      <button 
-                        type="button" 
-                        onClick={handleStopGeneration} 
-                        className="w-[30px] h-[30px] sm:w-[32px] sm:h-[32px] rounded-full bg-[#EF4444] text-white hover:bg-red-650 hover:opacity-95 transition-all border-none cursor-pointer flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px]"
-                        title="Stop generation"
-                      >
-                        <X size={15} className="text-white font-black stroke-[3px]" />
-                      </button>
-                    ) : (
-                      <button 
-                        type="submit" 
-                        disabled={!chatInput.trim()}
-                        className={`w-[30px] h-[30px] sm:w-[32px] sm:h-[32px] rounded-full transition-all border-none cursor-pointer flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px] ${
-                          chatInput.trim()
-                            ? 'bg-[#4F46E5] text-white hover:bg-[#4338CA]'
-                            : 'text-gray-300 cursor-not-allowed'
-                        }`}
-                        title="Send message"
-                      >
-                        <Send size={12} />
-                      </button>
-                    )}
-                  </form>
-                </div>
-                {showSidebarScrollBtn && (
                   <button
                     type="button"
-                    onClick={scrollToSidebarBottom}
-                    className="absolute bottom-[90px] left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-full shadow-lg text-[10px] font-bold text-[#4F46E5] dark:text-indigo-400 hover:bg-slate-50 dark:hover:bg-zinc-750 transition-all cursor-pointer select-none animate-bounce"
+                    onClick={() => setShowSidebarPlusMenu(prev => !prev)}
+                    className={`p-2 transition-colors border-none bg-transparent cursor-pointer shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center ${showSidebarPlusMenu ? 'text-[#4F46E5] bg-[#4F46E5]/10 rounded-xl' : 'text-gray-400 hover:text-[#4F46E5]'
+                      }`}
+                    title="Quick Actions"
                   >
-                    <ChevronDown size={11} />
-                    <span>Scroll to Latest</span>
+                    <Plus size={16} />
                   </button>
-                )}
+
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('workspace-doc-upload').click()}
+                    className="p-2 text-gray-400 hover:text-[#4F46E5] transition-colors border-none bg-transparent cursor-pointer shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    title="Upload Documents"
+                  >
+                    <Paperclip size={16} />
+                  </button>
+
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => handleChatInputChange(e.target.value)}
+                    placeholder="Type message..."
+                    className="flex-1 bg-transparent border-none text-[11px] font-semibold focus:ring-0 p-0 text-slate-700 dark:text-white outline-none min-w-0"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleVoiceInputSidebar}
+                    className={`p-2 transition-colors border-none bg-transparent cursor-pointer shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center ${isListeningSidebar ? 'text-red-500 animate-pulse' : 'text-gray-400 hover:text-[#4F46E5]'
+                      }`}
+                    title="Voice Input"
+                  >
+                    <Mic size={16} />
+                  </button>
+
+                  {isChatSending ? (
+                    <button
+                      type="button"
+                      onClick={handleStopGeneration}
+                      className="w-[30px] h-[30px] sm:w-[32px] sm:h-[32px] rounded-full bg-[#EF4444] text-white hover:bg-red-650 hover:opacity-95 transition-all border-none cursor-pointer flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px]"
+                      title="Stop generation"
+                    >
+                      <X size={15} className="text-white font-black stroke-[3px]" />
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={!chatInput.trim()}
+                      className={`w-[30px] h-[30px] sm:w-[32px] sm:h-[32px] rounded-full transition-all border-none cursor-pointer flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px] ${chatInput.trim()
+                          ? 'bg-[#4F46E5] text-white hover:bg-[#4338CA]'
+                          : 'text-gray-300 cursor-not-allowed'
+                        }`}
+                      title="Send message"
+                    >
+                      <Send size={12} />
+                    </button>
+                  )}
+                </form>
               </div>
-            )}
+              {showSidebarScrollBtn && (
+                <button
+                  type="button"
+                  onClick={scrollToSidebarBottom}
+                  className="absolute bottom-[90px] left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-full shadow-lg text-[10px] font-bold text-[#4F46E5] dark:text-indigo-400 hover:bg-slate-50 dark:hover:bg-zinc-750 transition-all cursor-pointer select-none animate-bounce"
+                >
+                  <ChevronDown size={11} />
+                  <span>Scroll to Latest</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Right Sidebar Column (Col 3) - Mobile overlay / bottom sheet drawer */}
           <AnimatePresence>
@@ -9458,7 +10090,7 @@ INSTRUCTIONS:
               <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40 backdrop-blur-[1.5px] select-none">
                 {/* Click outside backdrop to close */}
                 <div className="absolute inset-0 z-0" onClick={closeAssistant} />
-                
+
                 <motion.div
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
@@ -9468,11 +10100,11 @@ INSTRUCTIONS:
                 >
                   {/* Drag / Pull handle bar */}
                   <div className="w-12 h-1.5 bg-slate-350 dark:bg-zinc-700 rounded-full mx-auto my-3 cursor-pointer shrink-0" onClick={closeAssistant} />
-                  
+
                   {/* Drawer Header */}
                   <div className="px-4 pb-3 border-b border-[#E5E7EB] dark:border-zinc-800 flex items-center justify-between select-none shrink-0">
                     <div className="flex items-center gap-2">
-                      <button 
+                      <button
                         onClick={closeAssistant}
                         className="p-1 rounded hover:bg-slate-50 dark:hover:bg-zinc-800 text-gray-555 hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer border-none bg-transparent mr-1"
                         title="Back to Case Workspace"
@@ -9489,11 +10121,10 @@ INSTRUCTIONS:
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <button 
+                      <button
                         onClick={handleToggleSidebarHistory}
-                        className={`p-1.5 rounded hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer border-none bg-transparent flex items-center gap-1 text-[10px] font-bold ${
-                          showSidebarHistory ? 'text-[#4F46E5]' : 'text-gray-400 hover:text-gray-655 dark:hover:text-white'
-                        }`}
+                        className={`p-1.5 rounded hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer border-none bg-transparent flex items-center gap-1 text-[10px] font-bold ${showSidebarHistory ? 'text-[#4F46E5]' : 'text-gray-400 hover:text-gray-655 dark:hover:text-white'
+                          }`}
                         title="Chat History"
                       >
                         <History size={14} />
@@ -9502,7 +10133,7 @@ INSTRUCTIONS:
                   </div>
 
                   {/* Message List Container */}
-                  <div 
+                  <div
                     ref={sidebarScrollRef}
                     onScroll={handleSidebarScroll}
                     className="flex-1 overflow-y-auto p-4 space-y-4 text-xs scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent relative"
@@ -9544,11 +10175,10 @@ INSTRUCTIONS:
                           <span className={`text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                             {msg.role === 'user' ? 'ADVOCATE' : 'AI ASSISTANT'}
                           </span>
-                          <div className={`p-3 rounded-2xl max-w-[90%] leading-relaxed font-semibold ${
-                            msg.role === 'user'
+                          <div className={`p-3 rounded-2xl max-w-[90%] leading-relaxed font-semibold ${msg.role === 'user'
                               ? 'bg-[#4F46E5] text-white rounded-tr-none ml-auto'
                               : 'bg-slate-50 dark:bg-zinc-800/30 border border-[#E5E7EB] dark:border-zinc-800 text-slate-705 dark:text-slate-350 rounded-tl-none mr-auto'
-                          }`}>
+                            }`}>
                             {msg.role === 'user' ? (
                               <p className="whitespace-pre-wrap">{msg.content}</p>
                             ) : (
@@ -9583,8 +10213,8 @@ INSTRUCTIONS:
                           <div className="absolute bottom-full mb-3 left-2 z-50 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl p-3 space-y-2.5 font-sans select-none text-left">
                             <div className="flex justify-between items-center pb-1.5 border-b border-slate-100">
                               <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Quick AI Actions</span>
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 onClick={() => setShowSidebarPlusMenu(false)}
                                 className="text-slate-400 hover:text-slate-655 border-none bg-transparent cursor-pointer"
                               >
@@ -9614,19 +10244,18 @@ INSTRUCTIONS:
                         </>
                       )}
 
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => setShowSidebarPlusMenu(prev => !prev)}
-                        className={`p-2 transition-colors border-none bg-transparent cursor-pointer shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                          showSidebarPlusMenu ? 'text-[#4F46E5] bg-[#4F46E5]/10 rounded-xl' : 'text-gray-400 hover:text-[#4F46E5]'
-                        }`}
+                        className={`p-2 transition-colors border-none bg-transparent cursor-pointer shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center ${showSidebarPlusMenu ? 'text-[#4F46E5] bg-[#4F46E5]/10 rounded-xl' : 'text-gray-400 hover:text-[#4F46E5]'
+                          }`}
                         title="Quick Actions"
                       >
                         <Plus size={16} />
                       </button>
 
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => document.getElementById('workspace-doc-upload').click()}
                         className="p-2 text-gray-400 hover:text-[#4F46E5] transition-colors border-none bg-transparent cursor-pointer shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
                         title="Upload Documents"
@@ -9634,43 +10263,41 @@ INSTRUCTIONS:
                         <Paperclip size={16} />
                       </button>
 
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={chatInput}
                         onChange={(e) => handleChatInputChange(e.target.value)}
                         placeholder="Type message..."
                         className="flex-1 bg-transparent border-none text-[11px] font-semibold focus:ring-0 p-0 text-slate-700 dark:text-white outline-none min-w-0"
                       />
 
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={handleVoiceInputSidebar}
-                        className={`p-2 transition-colors border-none bg-transparent cursor-pointer shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                          isListeningSidebar ? 'text-red-500 animate-pulse' : 'text-gray-400 hover:text-[#4F46E5]'
-                        }`}
+                        className={`p-2 transition-colors border-none bg-transparent cursor-pointer shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center ${isListeningSidebar ? 'text-red-500 animate-pulse' : 'text-gray-400 hover:text-[#4F46E5]'
+                          }`}
                         title="Voice Input"
                       >
                         <Mic size={16} />
                       </button>
 
                       {isChatSending ? (
-                        <button 
-                          type="button" 
-                          onClick={handleStopGeneration} 
+                        <button
+                          type="button"
+                          onClick={handleStopGeneration}
                           className="w-[30px] h-[30px] sm:w-[32px] sm:h-[32px] rounded-full bg-[#EF4444] text-white hover:bg-red-650 hover:opacity-95 transition-all border-none cursor-pointer flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px]"
                           title="Stop generation"
                         >
                           <X size={15} className="text-white font-black stroke-[3px]" />
                         </button>
                       ) : (
-                        <button 
-                          type="submit" 
+                        <button
+                          type="submit"
                           disabled={!chatInput.trim()}
-                          className={`w-[30px] h-[30px] sm:w-[32px] sm:h-[32px] rounded-full transition-all border-none cursor-pointer flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px] ${
-                            chatInput.trim()
+                          className={`w-[30px] h-[30px] sm:w-[32px] sm:h-[32px] rounded-full transition-all border-none cursor-pointer flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px] ${chatInput.trim()
                               ? 'bg-[#4F46E5] text-white hover:bg-[#4338CA]'
                               : 'text-gray-300 cursor-not-allowed'
-                          }`}
+                            }`}
                           title="Send message"
                         >
                           <Send size={12} />
@@ -9695,13 +10322,13 @@ INSTRUCTIONS:
         </div>
       </div>
       <HistoryDrawer />
-      <input 
-        type="file" 
-        id="workspace-doc-upload" 
-        ref={fileInputRef} 
-        onChange={handleUploadEvidence} 
-        multiple 
-        className="hidden" 
+      <input
+        type="file"
+        id="workspace-doc-upload"
+        ref={fileInputRef}
+        onChange={handleUploadEvidence}
+        multiple
+        className="hidden"
       />
 
       {/* Modals */}
@@ -9717,7 +10344,7 @@ INSTRUCTIONS:
         if (isMobile) {
           return createPortal(
             <div className="fixed inset-0 z-[99999] flex items-end justify-center bg-black/60 backdrop-blur-[2px]" onClick={() => { setActiveActionsMenuId(null); setMenuTriggerRect(null); }}>
-              <div 
+              <div
                 className="w-full bg-white dark:bg-[#131c31] rounded-t-3xl shadow-2xl p-5 pb-8 space-y-4 max-h-[80vh] overflow-y-auto animate-in slide-in-from-bottom duration-250 border-t border-slate-200 dark:border-zinc-800"
                 onClick={e => e.stopPropagation()}
               >
@@ -9739,11 +10366,10 @@ INSTRUCTIONS:
                         setMenuTriggerRect(null);
                         opt.onClick();
                       }}
-                      className={`flex items-center gap-3 p-3 rounded-xl text-[10px] font-bold transition-all border ${
-                        opt.danger
+                      className={`flex items-center gap-3 p-3 rounded-xl text-[10px] font-bold transition-all border ${opt.danger
                           ? 'text-rose-600 hover:bg-rose-50 border-transparent dark:hover:bg-rose-955/20'
                           : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-800/50 border-slate-100 dark:border-zinc-800/40'
-                      }`}
+                        }`}
                     >
                       <span className={opt.danger ? 'text-rose-500' : 'text-indigo-500'}>{opt.icon}</span>
                       <span>{opt.label}</span>
@@ -9776,7 +10402,7 @@ INSTRUCTIONS:
         return createPortal(
           <>
             <div className="fixed inset-0 z-[99999]" onClick={() => { setActiveActionsMenuId(null); setMenuTriggerRect(null); }} />
-            <div 
+            <div
               style={{
                 position: 'fixed',
                 top: `${top}px`,
@@ -9797,13 +10423,12 @@ INSTRUCTIONS:
                         setMenuTriggerRect(null);
                         opt.onClick();
                       }}
-                      className={`w-full px-3 py-2 flex items-center gap-2.5 font-bold text-[10px] tracking-wider transition-all text-left ${
-                        opt.danger
+                      className={`w-full px-3 py-2 flex items-center gap-2.5 font-bold text-[10px] tracking-wider transition-all text-left ${opt.danger
                           ? 'text-red-500 hover:bg-red-500 hover:text-white'
-                          : isFocused 
-                            ? 'bg-indigo-650 text-white' 
+                          : isFocused
+                            ? 'bg-indigo-650 text-white'
                             : 'hover:bg-slate-50 dark:hover:bg-zinc-800/60 text-slate-700 dark:text-slate-300'
-                      }`}
+                        }`}
                     >
                       <span className={opt.danger ? 'text-red-400' : isFocused ? 'text-white' : 'text-slate-400 dark:text-slate-500'}>
                         {opt.icon}
@@ -9874,11 +10499,11 @@ INSTRUCTIONS:
       <AiHearingClerkModal visible={isHearingClerkModalOpen} onClose={() => { setIsHearingClerkModalOpen(false); setSelectedDetailHearing(null); }} hearing={selectedDetailHearing} />
       <HearingModal visible={isHearingModalVisible} onClose={() => { setIsHearingModalVisible(false); setEditingHearing(null); }} onSave={handleSaveHearing} editingHearing={editingHearing} />
       <UploadCourtOrderModal visible={isUploadOrderModalOpen} onClose={() => { setIsUploadOrderModalOpen(false); setUploadOrderContextHearing(null); }} hearing={uploadOrderContextHearing} onUpload={handleUploadCourtOrder} />
-      
+
       {isEditRosterModalOpen && (
         <div className="fixed inset-0 z-[120000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setIsEditRosterModalOpen(false)}>
           <div className="relative bg-white dark:bg-[#1a2540] w-full max-w-4xl max-h-[85vh] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-zinc-800/80 overflow-y-auto" onClick={e => e.stopPropagation()}>
-            
+
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-zinc-800/50">
               <div className="flex items-center gap-2">
                 <Users className="text-indigo-600" size={20} />
@@ -9900,11 +10525,10 @@ INSTRUCTIONS:
                   key={sec.id}
                   type="button"
                   onClick={() => setActiveRosterSection(sec.id)}
-                  className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap rounded-t-lg border-b-2 ${
-                    activeRosterSection === sec.id
+                  className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap rounded-t-lg border-b-2 ${activeRosterSection === sec.id
                       ? 'border-[#4F46E5] text-[#4F46E5] dark:text-indigo-400 bg-indigo-50/10'
                       : 'border-transparent text-slate-500 hover:text-slate-700'
-                  }`}
+                    }`}
                 >
                   {sec.label}
                 </button>
@@ -9944,7 +10568,7 @@ INSTRUCTIONS:
                 toast.error('Failed to update case roster');
               }
             }} className="space-y-4">
-              
+
               <div className="min-h-[220px]">
                 {/* 1. Client section */}
                 {activeRosterSection === 'client' && (
@@ -10089,7 +10713,7 @@ INSTRUCTIONS:
         }}
       />
       <DocViewerModal visible={isDocViewerOpen} onClose={() => setIsDocViewerOpen(false)} doc={activeDoc} />
-    </>
+    </LocalizedContainer>
   );
 };
 
@@ -10137,7 +10761,7 @@ const SmartActionMenu = ({ triggerRect, items, onClose }) => {
       const btns = Array.from(menuRef.current.querySelectorAll('button'));
       const idx = btns.indexOf(document.activeElement);
       if (e.key === 'ArrowDown') { e.preventDefault(); btns[(idx + 1) % btns.length]?.focus(); }
-      if (e.key === 'ArrowUp')   { e.preventDefault(); btns[(idx - 1 + btns.length) % btns.length]?.focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); btns[(idx - 1 + btns.length) % btns.length]?.focus(); }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -10178,11 +10802,10 @@ const SmartActionMenu = ({ triggerRect, items, onClose }) => {
               key={item.label}
               role="menuitem"
               onClick={() => { onClose(); item.onClick(); }}
-              className={`w-full text-left px-3.5 py-2 flex items-center gap-2 text-xs font-bold transition-colors outline-none focus:bg-indigo-50 dark:focus:bg-indigo-950/20 ${
-                item.danger
+              className={`w-full text-left px-3.5 py-2 flex items-center gap-2 text-xs font-bold transition-colors outline-none focus:bg-indigo-50 dark:focus:bg-indigo-950/20 ${item.danger
                   ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-800'
-              }`}
+                }`}
             >
               {item.icon}
               {item.label}
@@ -10199,26 +10822,27 @@ const LegalDashboard = ({
   legalCases = [],
 
   currentProjectId = null,
-  handleOpenCase = () => {},
-  handleOpenEditModal = () => {},
-  handleDeleteCase = () => {},
+  handleOpenCase = () => { },
+  handleOpenEditModal = () => { },
+  handleDeleteCase = () => { },
   isRenamingCase = null,
   renameValue = '',
-  setRenameValue = () => {},
-  handleRenameCase = () => {},
-  setIsRenamingCase = () => {},
-  setIsNewCaseModalOpen = () => {},
-  setEditingCaseId = () => {},
-  setNewCaseForm = () => {},
-  setActiveLegalToolkit = () => {},
-  onBack = () => {},
+  setRenameValue = () => { },
+  handleRenameCase = () => { },
+  setIsRenamingCase = () => { },
+  setIsNewCaseModalOpen = () => { },
+  setEditingCaseId = () => { },
+  setNewCaseForm = () => { },
+  setActiveLegalToolkit = () => { },
+  onBack = () => { },
   // New callbacks for module routing
   onAskStrategy,
   onViewRoadmap,
   onLaunchModuleWithCase,
   initialFilter = 'All'
 }) => {
-  const { tLegal } = useLanguage();
+  const { toolkitLanguage, setToolkitLanguage, tLegal } = useLanguage();
+  const t = useCallback((str) => tGlobal(str, toolkitLanguage), [toolkitLanguage]);
   const [selectedCase, setSelectedCase] = useState(null);
   const [filter, setFilter] = useState(initialFilter);
   const [searchQuery, setSearchQuery] = useState('');
@@ -10347,9 +10971,9 @@ const LegalDashboard = ({
 
   const getStatusLabel = (status) => {
     switch ((status || 'Active').toLowerCase()) {
-      case 'active': return 'Active';
-      case 'closed': return 'Closed';
-      default: return 'Pending';
+      case 'active': return t('Active');
+      case 'closed': return t('Closed');
+      default: return t('Pending');
     }
   };
 
@@ -10367,7 +10991,7 @@ const LegalDashboard = ({
       {/* Dashboard Header */}
       <div className="w-full px-4 sm:px-6 md:px-10 lg:px-12 pt-6 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 border-b border-slate-200/60 dark:border-zinc-800 bg-white dark:bg-[#0b0c15]">
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={() => {
               console.log("Button Clicked: Back");
               console.log("Icon Clicked: Back");
@@ -10379,12 +11003,13 @@ const LegalDashboard = ({
             <ArrowLeft size={16} className="text-slate-600 dark:text-slate-400" />
           </button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">My Cases</h1>
-            <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">Browse, search, sort, and manage all your litigation case folders.</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{t('My Cases')}</h1>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">{t('Browse, search, sort, and manage all your litigation case folders.')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-          <button 
+          <LanguageToggle lang={toolkitLanguage === 'Hindi' ? 'hi' : 'en'} onChange={(l) => setToolkitLanguage(l === 'hi' ? 'Hindi' : 'English')} className="mr-1" />
+          <button
             onClick={() => {
               console.log("Button Clicked: New Case");
               console.log("Icon Clicked: New Case");
@@ -10394,7 +11019,7 @@ const LegalDashboard = ({
             }}
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#4F46E5] hover:opacity-90 text-white rounded-xl font-bold text-xs transition-all active:scale-95 shadow-sm whitespace-nowrap"
           >
-            <Plus size={14} /> <span>New Case Folder</span>
+            <Plus size={14} /> <span>{t('New Case Folder')}</span>
           </button>
         </div>
       </div>
@@ -10404,11 +11029,11 @@ const LegalDashboard = ({
         {/* Search box */}
         <div className="flex items-center gap-2 bg-gray-50/50 dark:bg-zinc-900/50 border border-[#E5E7EB] dark:border-zinc-800 rounded-xl px-3 py-2.5 w-full md:max-w-md min-h-[44px]">
           <Search size={14} className="text-slate-400 shrink-0" />
-          <input 
-            value={searchQuery} 
-            onChange={e => setSearchQuery(e.target.value)} 
-            placeholder="Search cases by name, client, opponent, court..."
-            className="bg-transparent outline-none text-xs font-semibold w-full text-slate-800 dark:text-white p-0 focus:ring-0 border-none" 
+          <input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder={t("Search cases by name, client, opponent, court...")}
+            className="bg-transparent outline-none text-xs font-semibold w-full text-slate-800 dark:text-white p-0 focus:ring-0 border-none"
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')}>
@@ -10421,45 +11046,45 @@ const LegalDashboard = ({
         <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide w-full md:w-auto select-none shrink-0" style={{ display: 'flex', overflowX: 'auto', whiteSpace: 'nowrap', gap: '12px' }}>
           {/* Status Dropdown */}
           <div className="flex items-center justify-between gap-1.5 px-3 py-2 bg-white dark:bg-zinc-900 border border-[#E5E7EB] dark:border-zinc-800 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-300 min-h-[44px] flex-1 md:flex-none justify-center shrink-0">
-            <span className="text-gray-400 dark:text-gray-550 font-bold">Status:</span>
+            <span className="text-gray-400 dark:text-gray-550 font-bold">{t("Status:")}</span>
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               className="bg-transparent border-none p-0 focus:ring-0 text-xs font-bold text-gray-800 dark:text-white cursor-pointer outline-none"
             >
-              <option value="All">All Statuses</option>
-              <option value="Active">Active</option>
-              <option value="Closed">Closed</option>
-              <option value="Pending">Pending</option>
+              <option value="All">{t("All Statuses")}</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Closed">{t("Closed")}</option>
+              <option value="Pending">{t("Pending")}</option>
             </select>
           </div>
 
           {/* Court Dropdown */}
           <div className="flex items-center justify-between gap-1.5 px-3 py-2 bg-white dark:bg-zinc-900 border border-[#E5E7EB] dark:border-zinc-800 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-300 min-h-[44px] flex-1 md:flex-none justify-center shrink-0">
-            <span className="text-gray-400 dark:text-gray-550 font-bold">Court:</span>
+            <span className="text-gray-400 dark:text-gray-550 font-bold">{t("Court:")}</span>
             <select
               value={selectedCourt}
               onChange={(e) => setSelectedCourt(e.target.value)}
               className="bg-transparent border-none p-0 focus:ring-0 text-xs font-bold text-gray-800 dark:text-white cursor-pointer outline-none max-w-[120px] truncate"
             >
               {availableCourts.map(court => (
-                <option key={court} value={court}>{court}</option>
+                <option key={court} value={court}>{court === 'All Courts' ? t('All Courts') : court}</option>
               ))}
             </select>
           </div>
 
           {/* Sort Dropdown */}
           <div className="flex items-center justify-between gap-1.5 px-3 py-2 bg-white dark:bg-zinc-900 border border-[#E5E7EB] dark:border-zinc-800 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-300 min-h-[44px] flex-1 md:flex-none justify-center shrink-0">
-            <span className="text-gray-400 dark:text-gray-505 font-bold">Sort:</span>
+            <span className="text-gray-400 dark:text-gray-505 font-bold">{t("Sort:")}</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="bg-transparent border-none p-0 focus:ring-0 text-xs font-bold text-gray-800 dark:text-white cursor-pointer outline-none"
             >
-              <option value="Last Updated">Last Updated</option>
-              <option value="Name">Name</option>
-              <option value="Created Date">Created Date</option>
-              <option value="Status">Status</option>
+              <option value="Last Updated">{t("Last Updated")}</option>
+              <option value="Name">{t("Name")}</option>
+              <option value="Created Date">{t("Created Date")}</option>
+              <option value="Status">{t("Status")}</option>
             </select>
           </div>
         </div>
@@ -10469,30 +11094,30 @@ const LegalDashboard = ({
           <button
             onClick={() => setViewMode('grid')}
             className={`flex-1 md:flex-none p-2.5 px-4 transition-colors flex items-center justify-center min-h-[44px] ${viewMode === 'grid' ? 'bg-gray-100 dark:bg-zinc-850 text-[#4F46E5]' : 'bg-transparent text-gray-400 hover:text-gray-605 dark:hover:text-white'}`}
-            title="Grid View"
+            title={t("Grid View")}
           >
             <LayoutDashboard size={14} className="mr-1.5" />
-            <span className="text-xs font-bold">Grid</span>
+            <span className="text-xs font-bold">{t("Grid")}</span>
           </button>
           <button
             onClick={() => setViewMode('table')}
             className={`flex-1 md:flex-none p-2.5 px-4 border-l border-[#E5E7EB] dark:border-zinc-800 transition-colors flex items-center justify-center min-h-[44px] ${viewMode === 'table' ? 'bg-gray-100 dark:bg-zinc-850 text-[#4F46E5]' : 'bg-transparent text-gray-400 hover:text-gray-655'}`}
-            title="Table View"
+            title={t("Table View")}
           >
             <ClipboardList size={14} className="mr-1.5" />
-            <span className="text-xs font-bold">List</span>
+            <span className="text-xs font-bold">{t("List")}</span>
           </button>
         </div>
       </div>
       {/* Main Container */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-6 md:px-10 lg:px-12 py-6 overscroll-contain touch-pan-y"
         style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }}>
-        
+
         {filteredCases.length > 0 ? (
           <div className="bg-white dark:bg-zinc-900 border border-[#E5E7EB] dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden transition-all duration-200">
             <AnimatePresence mode="wait">
               {viewMode === 'table' ? (
-                <motion.div 
+                <motion.div
                   key="table-view"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -10503,19 +11128,19 @@ const LegalDashboard = ({
                   <table className="w-full text-left border-collapse text-xs font-semibold min-w-[900px] md:min-w-0">
                     <thead>
                       <tr className="border-b border-[#E5E7EB] dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/50 text-[10px] text-gray-400 dark:text-gray-550 uppercase tracking-wider font-bold">
-                        <th className="px-6 py-4 font-bold sticky left-0 bg-gray-50 dark:bg-zinc-900 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Case Name</th>
-                        <th className="px-6 py-4 font-bold">Case Type</th>
-                        <th className="px-6 py-4 font-bold">Court</th>
-                        <th className="px-6 py-4 font-bold">Next Hearing</th>
-                        <th className="px-6 py-4 font-bold">Status</th>
-                        <th className="px-6 py-4 text-center font-bold">Actions</th>
-                        <th className="px-6 py-4 text-right font-bold sticky right-0 bg-gray-50 dark:bg-zinc-900 z-20 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">Open Workspace</th>
+                        <th className="px-6 py-4 font-bold sticky left-0 bg-gray-50 dark:bg-zinc-900 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">{t("Case Name")}</th>
+                        <th className="px-6 py-4 font-bold">{t("Case Type")}</th>
+                        <th className="px-6 py-4 font-bold">{t("Court")}</th>
+                        <th className="px-6 py-4 font-bold">{t("Next Hearing")}</th>
+                        <th className="px-6 py-4 font-bold">{t("Status")}</th>
+                        <th className="px-6 py-4 text-center font-bold">{t("Actions")}</th>
+                        <th className="px-6 py-4 text-right font-bold sticky right-0 bg-gray-50 dark:bg-zinc-900 z-20 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">{t("Open Workspace")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E5E7EB] dark:divide-zinc-800">
                       {filteredCases.map((c) => (
-                        <tr 
-                          key={c._id || c.id} 
+                        <tr
+                          key={c._id || c.id}
                           className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-all duration-150 group cursor-pointer"
                           onClick={() => handleCaseClick(c)}
                         >
@@ -10527,12 +11152,12 @@ const LegalDashboard = ({
                               <div className="min-w-0 flex-1">
                                 {isRenamingCase === (c.id || c._id) ? (
                                   <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                                    <input 
-                                      autoFocus 
-                                      value={renameValue} 
+                                    <input
+                                      autoFocus
+                                      value={renameValue}
                                       onChange={e => setRenameValue(e.target.value)}
                                       className="bg-slate-50 dark:bg-black/20 border border-[#4F46E5] rounded-lg px-2 py-1 text-xs font-bold w-full outline-none text-slate-800 dark:text-white"
-                                      onKeyDown={e => e.key === 'Enter' && handleRenameCase(c.id || c._id)} 
+                                      onKeyDown={e => e.key === 'Enter' && handleRenameCase(c.id || c._id)}
                                     />
                                     <button onClick={() => handleRenameCase(c.id || c._id)} className="p-1 text-green-500 shrink-0"><Check size={14} /></button>
                                     <button onClick={() => setIsRenamingCase(null)} className="p-1 text-slate-400 shrink-0"><X size={14} /></button>
@@ -10628,14 +11253,14 @@ const LegalDashboard = ({
                             </div>
                           </td>
                           <td className="px-6 py-4 text-right sticky right-0 bg-white dark:bg-zinc-900 group-hover:bg-slate-50 dark:group-hover:bg-zinc-805 transition-colors z-10 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleCaseClick(c);
                               }}
                               className="text-xs font-bold text-[#4F46E5] hover:underline whitespace-nowrap inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
                             >
-                              Open Workspace <ChevronRight size={13} />
+                              {t("Open Workspace")} <ChevronRight size={13} />
                             </button>
                           </td>
                         </tr>
@@ -10653,7 +11278,7 @@ const LegalDashboard = ({
                   className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 p-5 bg-gray-50/30 dark:bg-transparent"
                 >
                   {filteredCases.map((c) => (
-                    <div 
+                    <div
                       key={c._id || c.id}
                       onClick={() => handleCaseClick(c)}
                       className="group relative bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 cursor-pointer"
@@ -10669,11 +11294,10 @@ const LegalDashboard = ({
                           </span>
                         </div>
                         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                            (c.priority || 'Medium').toLowerCase() === 'high' || (c.priority || 'Medium').toLowerCase() === 'critical' || (c.priority || 'Medium').toLowerCase() === 'urgent'
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${(c.priority || 'Medium').toLowerCase() === 'high' || (c.priority || 'Medium').toLowerCase() === 'critical' || (c.priority || 'Medium').toLowerCase() === 'urgent'
                               ? 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30'
                               : 'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/30'
-                          }`}>
+                            }`}>
                             {c.priority || 'Medium'}
                           </span>
                           <div className="relative">
@@ -10754,12 +11378,12 @@ const LegalDashboard = ({
                       <div className="space-y-1.5 mb-4">
                         {isRenamingCase === (c.id || c._id) ? (
                           <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                            <input 
-                              autoFocus 
-                              value={renameValue} 
+                            <input
+                              autoFocus
+                              value={renameValue}
                               onChange={e => setRenameValue(e.target.value)}
                               className="bg-slate-50 dark:bg-black/20 border border-[#4F46E5] rounded-lg px-2 py-1 text-xs font-bold w-full outline-none text-slate-800 dark:text-white"
-                              onKeyDown={e => e.key === 'Enter' && handleRenameCase(c.id || c._id)} 
+                              onKeyDown={e => e.key === 'Enter' && handleRenameCase(c.id || c._id)}
                             />
                             <button onClick={() => handleRenameCase(c.id || c._id)} className="p-1 text-green-500"><Check size={14} /></button>
                             <button onClick={() => setIsRenamingCase(null)} className="p-1 text-slate-400"><X size={14} /></button>
@@ -10786,7 +11410,7 @@ const LegalDashboard = ({
                           {new Date(c.updatedAt || Date.now()).toLocaleDateString()}
                         </span>
                         <div className="flex items-center gap-0.5 text-[#4F46E5]">
-                          <span className="text-[10px] font-bold uppercase tracking-wider">Open Case</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider">{t("Open Case")}</span>
                           <ChevronRight size={13} />
                         </div>
                       </div>
@@ -10804,13 +11428,13 @@ const LegalDashboard = ({
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-800 dark:text-white">
-                No cases found
+                {t("No cases found")}
               </h3>
               <p className="text-xs text-slate-400 mt-1.5 max-w-sm">
-                Create your first case to begin managing legal matters.
+                {t("Create your first case to begin managing legal matters.")}
               </p>
             </div>
-            <button 
+            <button
               onClick={() => {
                 console.log("Button Clicked: New Case");
                 console.log("Icon Clicked: New Case");
@@ -10820,7 +11444,7 @@ const LegalDashboard = ({
               }}
               className="mt-5 px-6 py-2.5 bg-[#4F46E5] hover:opacity-90 text-white rounded-xl font-bold text-xs transition-all shadow-sm"
             >
-              New Case Folder
+              {t("New Case Folder")}
             </button>
           </div>
         )}

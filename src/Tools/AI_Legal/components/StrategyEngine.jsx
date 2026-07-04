@@ -15,6 +15,7 @@ import { mapCaseToForm } from '../services/activeModuleService';
 import { useActiveCase } from '../context/ActiveCaseContext';
 import { getUserData } from '../../../userStore/userData';
 import useOutputLanguage from '../hooks/useOutputLanguage';
+import { useLanguage } from '../../../context/LanguageContext';
 import LanguageToggle from './shared/LanguageToggle';
 import CopyOutputButton from './shared/CopyOutputButton';
 
@@ -420,6 +421,7 @@ const generatePath = (val) => {
 };
 
 const StrategyEngine = ({ currentCase, onBack, theme, allProjects = [], onUpdateCase }) => {
+  const { toolkitLanguage, setToolkitLanguage } = useLanguage();
   const isDark = theme === 'dark';
 
   // Platform States
@@ -1107,7 +1109,7 @@ const StrategyEngine = ({ currentCase, onBack, theme, allProjects = [], onUpdate
         customizedPrompt,
         LITIGATION_SYSTEM_PROMPT,
         [],
-        'English',
+        toolkitLanguage || 'English',
         null,
         'legal'
       );
@@ -1396,7 +1398,7 @@ Schema: [{"name": "Witness Name", "role": "Role description", "supports": "Plain
         prompt,
         "You are an expert litigation analysis AI. Return ONLY valid JSON.",
         [],
-        'English',
+        toolkitLanguage || 'English',
         null,
         'legal'
       );
@@ -1525,7 +1527,7 @@ Schema: [{"name": "Witness Name", "role": "Role description", "supports": "Plain
         prompt,
         "You are an expert Legal AI parser. Return ONLY valid JSON matching the schema.",
         [],
-        'English',
+        toolkitLanguage || 'English',
         null,
         'legal'
       );
@@ -2989,6 +2991,7 @@ Schema: [{"name": "Witness Name", "role": "Role description", "supports": "Plain
           </div>
 
           <div className="flex items-center flex-wrap gap-2.5 lg:shrink-0">
+            <LanguageToggle lang={toolkitLanguage === 'Hindi' ? 'hi' : 'en'} onChange={(l) => setToolkitLanguage(l === 'hi' ? 'Hindi' : 'English')} />
             <div className="hidden xl:flex flex-col text-right text-[10px] text-slate-400 font-semibold mr-1">
               <span>Recent Strategy count: <strong>{historyData.length}</strong></span>
               <span>Last Simulation: <strong>{historyData[0]?.timestamp || 'Never'}</strong></span>

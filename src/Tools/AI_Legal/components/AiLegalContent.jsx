@@ -19,6 +19,8 @@ import LegalDashboard from './LegalDashboard';
 import HearingManagement from './HearingManagement';
 import ComplianceCenter from './ComplianceCenter';
 import CaseContextModal from './CaseContextModal';
+import { useLanguage } from '../../../context/LanguageContext';
+import LanguageToggle from './shared/LanguageToggle';
 
 
 const ArrowLeft = ({ size = 20, className = '' }) => (
@@ -38,6 +40,7 @@ const AiLegalContent = ({
   onBack
 }) => {
   const navigate = useNavigate();
+  const { toolkitLanguage, setToolkitLanguage, tLegal: t } = useLanguage();
 
   const [activeModule, setActiveModule] = useState(null); // 'CASE_MANAGEMENT', 'HEARING_MANAGEMENT', 'COMPLIANCE_CENTER'
   const [selectedTool, setSelectedTool] = useState(null);
@@ -101,26 +104,11 @@ const AiLegalContent = ({
     navigate(`/dashboard/legal/cases/${caseId}/chat`, { replace: true });
   }, [setCurrentCase, setCurrentProjectId, setLegalView, setSelectedLegalTool, navigate]);
 
-  const handleOpenEditModal = useCallback(async (c) => {
+  const handleOpenEditModal = useCallback((c) => {
     const caseId = c.id || c._id;
-    console.log("Edit Case Clicked");
-    console.log("Case ID:", caseId);
-    console.log("Fetching Existing Case Data");
-    try {
-      const cases = await legalService.getCases();
-      const foundCase = cases.find(item => item.id === caseId || item._id === caseId);
-      if (!foundCase) {
-        throw new Error("Case data not found in storage");
-      }
-      console.log("Case Data Loaded:", foundCase);
-      setEditingCase(foundCase);
-      setEditingCaseId(caseId);
-      setIsNewCaseModalOpen(true);
-      console.log("Form Prefilled Successfully");
-    } catch (e) {
-      console.error("Failed to load case data for editing:", e);
-      alert("Failed to load case data: " + e.message);
-    }
+    setEditingCase(c);
+    setEditingCaseId(caseId);
+    setIsNewCaseModalOpen(true);
   }, []);
 
   const handleDeleteCase = useCallback(async (id) => {
@@ -182,8 +170,8 @@ const AiLegalContent = ({
       icon: <FolderKanban size={26} strokeWidth={1.8} />,
       iconBg: '#EEF2FF',
       iconColor: '#5B5FEF',
-      title: 'My Case',
-      desc: 'Personal Legal CRM & Case Intelligence System',
+      title: t('myCase') || 'My Case',
+      desc: t('myCaseDesc') || 'Personal Legal CRM & Case Intelligence System',
       prompt: 'Show me my case intelligence for: ',
       features: ["Create case", "Upload files", "Hearing timeline", "Case notes", "AI summary", "Legal reminders", "Advocate details", "Evidence manager"],
       badge: 'LIVE AI',
@@ -199,8 +187,8 @@ const AiLegalContent = ({
       icon: <Landmark size={26} strokeWidth={1.8} />,
       iconBg: '#EEF2FF',
       iconColor: '#5B5FEF',
-      title: 'Legal Precedent',
-      desc: 'Searchable Case Laws & Citation Generator',
+      title: t('legalPrecedent') || 'Legal Precedent',
+      desc: t('legalPrecedentDesc') || 'Searchable Case Laws, Judgments & Citation Intelligence',
       prompt: 'Find legal precedents for: ',
       features: ["Searchable case laws", "Court filtering", "Citation generator", "AI legal interpretation", "Related judgments", "Bookmark system"],
       badge: 'VERIFIED',
@@ -216,8 +204,8 @@ const AiLegalContent = ({
       icon: <NotebookPen size={26} strokeWidth={1.8} />,
       iconBg: '#EEF2FF',
       iconColor: '#5B5FEF',
-      title: 'Draft Maker',
-      desc: 'FIR, Affidavit & Agreement Architect',
+      title: t('draftMaker') || 'Draft Maker',
+      desc: t('draftMakerDesc') || 'Notice, Affidavit, FIR & Legal Agreements Architect',
       prompt: 'I need to draft a legal document for: ',
       features: ["FIR", "Affidavit", "Legal Notice", "Agreement", "NDA", "Employment Contract", "Rent Agreement", "Export PDF", "AI Rewrite"],
       badge: 'PRO',
@@ -233,8 +221,8 @@ const AiLegalContent = ({
       icon: <ScanText size={26} strokeWidth={1.8} />,
       iconBg: '#EEF2FF',
       iconColor: '#5B5FEF',
-      title: 'Evidence Analysis',
-      desc: 'OCR Scanning & Authenticity Scoring',
+      title: t('evidenceAnalysis') || 'Evidence Analysis',
+      desc: t('evidenceAnalysisDesc') || 'OCR Scanning, Evidence Verification & Authenticity Scoring',
       prompt: 'Analyze this evidence for admissibility and risk: ',
       features: ["OCR scanning", "Image evidence review", "PDF analysis", "AI inconsistency detection", "Timeline extraction", "Authenticity scoring"],
       badge: 'MOST USED',
@@ -250,8 +238,8 @@ const AiLegalContent = ({
       icon: <Gavel size={26} strokeWidth={1.8} />,
       iconBg: '#EEF2FF',
       iconColor: '#5B5FEF',
-      title: 'Argument Builder',
-      desc: 'Courtroom-Ready Arguments & Counterpoints',
+      title: t('argumentBuilder') || 'Argument Builder',
+      desc: t('argumentBuilderDesc') || 'Structure Courtroom-Ready Arguments & Cross-Examinations',
       prompt: 'Help me build a courtroom argument for: ',
       features: ["Courtroom arguments", "Opposition counterpoints", "Judge-perspective analysis", "Persuasive drafting", "Legal strategy suggestions"],
       badge: 'NEW',
@@ -267,8 +255,8 @@ const AiLegalContent = ({
       icon: <Target size={26} strokeWidth={1.8} />,
       iconBg: '#EEF2FF',
       iconColor: '#5B5FEF',
-      title: 'Case Predictor',
-      desc: 'Success Probability & AI Risk Analysis',
+      title: t('casePredictor') || 'Case Predictor',
+      desc: t('casePredictorDesc') || 'Outcome Probability & Case Strength Analysis',
       prompt: 'Predict the outcome for this legal case: ',
       features: ["Success probability", "AI risk analysis", "Outcome simulation", "Estimated legal strength", "Timeline prediction"],
       badge: 'BETA',
@@ -284,8 +272,8 @@ const AiLegalContent = ({
       icon: <FileCheck size={26} strokeWidth={1.8} />,
       iconBg: '#EEF2FF',
       iconColor: '#5B5FEF',
-      title: 'Contract Review',
-      desc: 'Clause Detection & Risky Term Alerts',
+      title: t('contractReview') || 'Contract Review',
+      desc: t('contractReviewDesc') || 'Clause Detection, Compliance Review & Risk Alerts',
       prompt: 'Please analyze this contract for: ',
       features: ["Clause detection", "Risky term alerts", "AI recommendations", "Contract simplification", "Missing clause detection"],
       badge: 'RECOMMENDED',
@@ -301,8 +289,8 @@ const AiLegalContent = ({
       icon: <Waypoints size={26} strokeWidth={1.8} />,
       iconBg: '#EEF2FF',
       iconColor: '#5B5FEF',
-      title: 'Strategy Engine',
-      desc: 'Litigation Roadmap & Tactical Suggestions',
+      title: t('strategyEngine') || 'Strategy Engine',
+      desc: t('strategyEngineDesc') || 'Litigation Strategy, Tactical Planning & Case Journey Intelligence',
       prompt: 'Develop a legal strategy for: ',
       features: ["Litigation roadmap", "Tactical suggestions", "Hearing preparation", "Legal action sequencing"],
       badge: 'AI ACTIVE',
@@ -313,7 +301,7 @@ const AiLegalContent = ({
       useCases: ['Case planning', 'Tactical maneuvering', 'Step-by-step guidance'],
       sampleOutput: 'Roadmap: Step 1 - Filing Interlocutory Application. Step 2 - Notice to Respondent.'
     }
-  ], []);
+  ], [t]);
 
 
   const loadSavedTools = useCallback(async () => {
@@ -403,8 +391,7 @@ const AiLegalContent = ({
         console.log("Case Updated Successfully");
         
         if (currentCase?.id === editingCaseId || currentCase?._id === editingCaseId) {
-          const updatedCases = await legalService.getCases();
-          const refreshed = updatedCases.find(item => item.id === editingCaseId || item._id === editingCaseId);
+          const refreshed = await apiService.getProject(editingCaseId);
           if (refreshed && setCurrentCase) {
             setCurrentCase(refreshed);
           }
@@ -708,11 +695,11 @@ const AiLegalContent = ({
           >
             <Scale size={20} strokeWidth={1.8} className="text-white" />
           </div>
-          <div>
+          <div className="text-left">
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none">AI Legal™</h1>
             <p className="text-[10px] sm:text-[11px] text-[#8B95A7] font-semibold uppercase tracking-[0.2em] mt-1 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-              AI-POWERED LEGAL INTELLIGENCE PLATFORM
+              {t('legalPoweredSubtitle') || 'AI-POWERED LEGAL INTELLIGENCE PLATFORM'}
             </p>
           </div>
         </div>
@@ -728,8 +715,8 @@ const AiLegalContent = ({
             onClick={() => {
               handleToolPress({
                 id: 'legal_general_chat',
-                title: 'General Legal Chat',
-                desc: 'Professional legal discourse, situational guidance, and citation Q&A.',
+                title: t('generalLegalChat') || 'General Legal Chat',
+                desc: t('generalLegalChatDesc') || 'Professional legal discourse, situational guidance, and citation Q&A.',
                 icon: <MessageSquare size={24} />,
                 badge: 'LIVE AI',
                 confidence: 99,
@@ -760,23 +747,23 @@ const AiLegalContent = ({
                     <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-md text-[10px] font-semibold uppercase tracking-widest shrink-0">Enterprise Elite</span>
                     <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 shrink-0"><CheckCircle size={10} className="fill-current text-white" /> SECURE</span>
                   </div>
-                  <div className="flex items-center justify-between gap-2 sm:block">
-                    <h3 className="text-lg sm:text-[24px] font-bold tracking-tight leading-tight truncate sm:whitespace-normal">General Legal Chat</h3>
+                  <div className="flex items-center justify-between gap-2 sm:block text-left">
+                    <h3 className="text-lg sm:text-[24px] font-bold tracking-tight leading-tight truncate sm:whitespace-normal">{t('generalLegalChat') || 'General Legal Chat'}</h3>
                     <div className="sm:hidden shrink-0">
                       <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-indigo-700 font-semibold text-[11px] uppercase tracking-widest rounded-lg shadow-md shrink-0">
-                        START
+                        {t('start') || 'START'}
                         <ChevronRight size={13} />
                       </span>
                     </div>
                   </div>
-                  <p className="text-xs sm:text-[13px] text-indigo-100 font-medium leading-normal sm:leading-relaxed max-w-md">
-                    Professional legal discourse, situational guidance, and citation Q&A.
+                  <p className="text-xs sm:text-[13px] text-indigo-100 font-medium leading-normal sm:leading-relaxed max-w-md text-left">
+                    {t('generalLegalChatDesc') || 'Professional legal discourse, situational guidance, and citation Q&A.'}
                   </p>
                 </div>
               </div>
               <div className="hidden sm:flex w-full sm:w-auto shrink-0 justify-end">
                 <span className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 bg-white text-indigo-700 font-semibold text-[13px] uppercase tracking-widest rounded-xl sm:rounded-2xl shadow-lg shadow-black/10 shrink-0 group-hover:shadow-xl group-hover:scale-105 transition-all duration-300">
-                  START
+                  {t('start') || 'START'}
                   <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
                 </span>
               </div>
@@ -806,21 +793,6 @@ const AiLegalContent = ({
                       }
                     }}
                   >
-                    {/* Bookmark on Hover */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleSavedTool(tool);
-                      }}
-                      className={`absolute top-3 right-3 sm:top-4 sm:right-4 p-1.5 sm:p-2 rounded-lg text-slate-350 hover:text-violet-650 hover:bg-slate-50 dark:hover:bg-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${
-                        isSaved ? 'text-violet-650 dark:text-violet-400 opacity-100' : ''
-                      }`}
-                      title="Bookmark Tool"
-                    >
-                      <Bookmark size={15} className={isSaved ? 'fill-current' : ''} />
-                    </button>
-
                     {/* Desktop Layout Wrapper */}
                     <div className="hidden sm:block">
                       {/* Premium Icon Container */}

@@ -3158,79 +3158,66 @@ CRITICAL MASTER RULES:
                 </div>
               </div>
 
-              {/* Center */}
-              <div className="bg-slate-100 dark:bg-zinc-850 p-0.5 rounded-xl flex items-center select-none">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditorMode('READ');
-                    handleSave(true);
-                  }}
-                  className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border-none cursor-pointer ${
-                    editorMode === 'READ'
-                      ? 'bg-white dark:bg-[#1A2540] text-[#5B3DF5] shadow-sm'
-                      : 'text-slate-550 hover:text-slate-700'
-                  }`}
-                >
-                  Read Mode
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditorMode('EDIT');
-                    handleSave(true);
-                    setTimeout(() => {
-                      if (editorRef.current) {
-                        editorRef.current.focus();
-                        const range = document.createRange();
-                        const sel = window.getSelection();
-                        range.selectNodeContents(editorRef.current);
-                        range.collapse(false);
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                      }
-                    }, 100);
-                  }}
-                  className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border-none cursor-pointer ${
-                    editorMode === 'EDIT'
-                      ? 'bg-white dark:bg-[#1A2540] text-[#5B3DF5] shadow-sm'
-                      : 'text-slate-550 hover:text-slate-700'
-                  }`}
-                >
-                  Edit Mode
-                </button>
-              </div>
-
-              {/* Right */}
+              {/* Right section containing all preview controls in the specified order */}
               <div className="flex items-center gap-3">
-                {/* Language Selector */}
-                <div className="flex items-center bg-slate-100 dark:bg-zinc-805 p-0.5 rounded-xl">
+                {/* Read Mode & Edit Mode */}
+                <div className="bg-slate-100 dark:bg-zinc-850 p-0.5 rounded-xl flex items-center select-none mr-1 shrink-0">
                   <button
                     type="button"
-                    onClick={() => handleDraftLangChange('en')}
-                    className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition-all border-none cursor-pointer ${
-                      outputLang === 'en' ? 'bg-white dark:bg-[#1A2540] text-[#5B3DF5] shadow-sm' : 'text-slate-500'
+                    onClick={() => {
+                      setEditorMode('READ');
+                      handleSave(true);
+                    }}
+                    className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border-none cursor-pointer ${
+                      editorMode === 'READ'
+                        ? 'bg-white dark:bg-[#1A2540] text-[#5B3DF5] shadow-sm'
+                        : 'text-slate-550 hover:text-slate-700'
                     }`}
                   >
-                    EN
+                    Read Mode
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDraftLangChange('hi')}
-                    className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition-all border-none cursor-pointer ${
-                      outputLang === 'hi' ? 'bg-white dark:bg-[#1A2540] text-[#5B3DF5] shadow-sm' : 'text-slate-500'
+                    onClick={() => {
+                      setEditorMode('EDIT');
+                      handleSave(true);
+                      setTimeout(() => {
+                        if (editorRef.current) {
+                          editorRef.current.focus();
+                          const range = document.createRange();
+                          const sel = window.getSelection();
+                          range.selectNodeContents(editorRef.current);
+                          range.collapse(false);
+                          sel.removeAllRanges();
+                          sel.addRange(range);
+                        }
+                      }, 100);
+                    }}
+                    className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border-none cursor-pointer ${
+                      editorMode === 'EDIT'
+                        ? 'bg-white dark:bg-[#1A2540] text-[#5B3DF5] shadow-sm'
+                        : 'text-slate-550 hover:text-slate-700'
                     }`}
                   >
-                    हिन्दी
+                    Edit Mode
                   </button>
                 </div>
 
-                {/* ONE Smart Save Button */}
+                {/* Language Toggle (EN | हिन्दी) */}
+                <div className="flex items-center shrink-0">
+                  <LanguageToggle 
+                    lang={outputLang} 
+                    onChange={handleDraftLangChange} 
+                    isTranslating={isDraftTranslating} 
+                  />
+                </div>
+
+                {/* Save */}
                 {saveButtonState === 'unsaved' && (
                   <button
                     type="button"
                     onClick={() => handleSave(false)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#5B3DF5] hover:bg-indigo-750 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm border-none cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#5B3DF5] hover:bg-indigo-750 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm border-none cursor-pointer shrink-0"
                   >
                     <Save size={12} />
                     <span>Save</span>
@@ -3240,7 +3227,7 @@ CRITICAL MASTER RULES:
                   <button
                     type="button"
                     disabled
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-350 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 rounded-xl text-[10px] font-black uppercase tracking-wider border-none cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-350 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 rounded-xl text-[10px] font-black uppercase tracking-wider border-none cursor-not-allowed shrink-0"
                   >
                     <div className="w-3 h-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin shrink-0" />
                     <span>Saving...</span>
@@ -3250,14 +3237,15 @@ CRITICAL MASTER RULES:
                   <button
                     type="button"
                     disabled
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 dark:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider border-none"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 dark:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider border-none shrink-0"
                   >
                     <Check size={12} />
                     <span>Saved</span>
                   </button>
                 )}
 
-                <div className="relative">
+                {/* Download */}
+                <div className="relative shrink-0">
                   <button
                     type="button"
                     onClick={() => setIsDownloadOpen(!isDownloadOpen)}
@@ -3279,14 +3267,14 @@ CRITICAL MASTER RULES:
                         </button>
                         <button
                           onClick={() => { handleExportDOCX(); setIsDownloadOpen(false); }}
-                          className="w-full px-3 py-2 text-xs font-semibold text-slate-705 dark:text-slate-350 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-[#5B3DF5] rounded-lg flex items-center gap-2 border-none bg-transparent cursor-pointer"
+                          className="w-full px-3 py-2 text-xs font-semibold text-slate-705 dark:text-slate-355 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-[#5B3DF5] rounded-lg flex items-center gap-2 border-none bg-transparent cursor-pointer"
                         >
                           <FileCheck size={13} />
                           <span>DOCX</span>
                         </button>
                         <button
                           onClick={() => { handleExportTXT(); setIsDownloadOpen(false); }}
-                          className="w-full px-3 py-2 text-xs font-semibold text-slate-705 dark:text-slate-350 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-[#5B3DF5] rounded-lg flex items-center gap-2 border-none bg-transparent cursor-pointer"
+                          className="w-full px-3 py-2 text-xs font-semibold text-slate-705 dark:text-[#5B3DF5] hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-[#5B3DF5] rounded-lg flex items-center gap-2 border-none bg-transparent cursor-pointer"
                         >
                           <FileText size={13} />
                           <span>TXT</span>
@@ -3303,48 +3291,44 @@ CRITICAL MASTER RULES:
                   )}
                 </div>
 
-                {/* NEW ⭐ AI Button */}
+                {/* Copy */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsAiPanelOpen(!isAiPanelOpen);
-                    setIsHistoryPanelOpen(false);
-                  }}
-                  className={`p-2 border rounded-xl transition-all border-none cursor-pointer ${
-                    isAiPanelOpen
-                      ? 'bg-indigo-50 dark:bg-indigo-950/40 text-[#5B3DF5]'
-                      : 'hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300 bg-white dark:bg-transparent'
-                  }`}
-                  title="AI Copilot"
+                  onClick={handleCopy}
+                  className="p-2 border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300 rounded-xl transition-all border-none bg-white dark:bg-transparent cursor-pointer shrink-0"
+                  title="Copy Document"
                 >
-                  <Sparkles size={13} className={isAiPanelOpen ? 'text-[#5B3DF5]' : ''} />
+                  <Copy size={13} />
                 </button>
 
+                {/* Share */}
                 <button
                   type="button"
                   onClick={() => setIsShareModalOpen(true)}
-                  className="p-2 border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300 rounded-xl transition-all border-none bg-white dark:bg-transparent cursor-pointer"
+                  className="p-2 border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300 rounded-xl transition-all border-none bg-white dark:bg-transparent cursor-pointer shrink-0"
                   title="Share Document"
                 >
                   <Share2 size={13} />
                 </button>
 
+                {/* Print */}
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="p-2 border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-305 rounded-xl transition-all border-none bg-white dark:bg-transparent cursor-pointer"
+                  className="p-2 border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-705 dark:text-slate-305 rounded-xl transition-all border-none bg-white dark:bg-transparent cursor-pointer shrink-0"
                   title="Print Document"
                 >
                   <Printer size={13} />
                 </button>
 
+                {/* History */}
                 <button
                   type="button"
                   onClick={() => {
                     setIsHistoryPanelOpen(!isHistoryPanelOpen);
                     setIsAiPanelOpen(false);
                   }}
-                  className={`p-2 border rounded-xl transition-all border-none cursor-pointer ${
+                  className={`p-2 border rounded-xl transition-all border-none cursor-pointer shrink-0 ${
                     isHistoryPanelOpen
                       ? 'bg-indigo-50 dark:bg-indigo-950/40 text-[#5B3DF5]'
                       : 'hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-305 bg-white dark:bg-transparent'

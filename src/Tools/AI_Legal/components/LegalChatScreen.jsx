@@ -18,6 +18,7 @@ import { legalService } from '../services/legalService';
 import { apiService } from '../../../services/apiService';
 import { chatStorageService } from '../../../services/chatStorageService';
 import LanguageToggle from './shared/LanguageToggle';
+import { useLanguage } from '../../../context/LanguageContext';
 import useOutputLanguage from '../hooks/useOutputLanguage';
 import { exportToPDF } from '../utils/exportToPDF';
 
@@ -833,6 +834,7 @@ Please continue the conversation naturally using this context. Never ask the use
     recognition.start();
   };
 
+  const { toolkitLanguage, setToolkitLanguage } = useLanguage();
   const [messages, setMessages] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState('');
@@ -1297,13 +1299,16 @@ Please continue the conversation naturally using this context. Never ask the use
         systemInstruction += `- Case Name: ${currentCase.title || currentCase.name || 'N/A'}\n`;
         systemInstruction += `- Case Description: ${currentCase.summary || currentCase.description || 'N/A'}\n`;
       }
+      if (toolkitLanguage === 'Hindi') {
+        systemInstruction += `\n\nCRITICAL: Respond in Hindi (Devanagari script) only. Use professional Indian legal terminology where appropriate.`;
+      }
 
       const response = await generateChatResponse(
         apiHistory,
         promptText,
         systemInstruction,
         apiAttachments,
-        'English',
+        toolkitLanguage || 'English',
         abortControllerRef.current.signal,
         'LEGAL_TOOLKIT',
         null,
@@ -1459,13 +1464,16 @@ Please continue the conversation naturally using this context. Never ask the use
         systemInstruction += `- Case Name: ${currentCase.title || currentCase.name || 'N/A'}\n`;
         systemInstruction += `- Case Description: ${currentCase.summary || currentCase.description || 'N/A'}\n`;
       }
+      if (toolkitLanguage === 'Hindi') {
+        systemInstruction += `\n\nCRITICAL: Respond in Hindi (Devanagari script) only. Use professional Indian legal terminology where appropriate.`;
+      }
 
       const response = await generateChatResponse(
         precedingHistory,
         promptText,
         systemInstruction,
         [],
-        'English',
+        toolkitLanguage || 'English',
         abortControllerRef.current.signal,
         'LEGAL_TOOLKIT',
         null,
@@ -1725,7 +1733,10 @@ Please continue the conversation naturally using this context. Never ask the use
       try {
         let systemInstruction = LEGAL_SYSTEM_INSTRUCTION;
         systemInstruction += `\n\nCase Context:\n- Title: ${currentCase.title || currentCase.name}\n- Summary: ${currentCase.summary || currentCase.description}\n`;
-        const response = await generateChatResponse([], promptText, systemInstruction, [], 'English', null, 'LEGAL_TOOLKIT', null, null);
+        if (toolkitLanguage === 'Hindi') {
+          systemInstruction += `\n\nCRITICAL: Respond in Hindi (Devanagari script) only. Use professional Indian legal terminology where appropriate.`;
+        }
+        const response = await generateChatResponse([], promptText, systemInstruction, [], toolkitLanguage || 'English', null, 'LEGAL_TOOLKIT', null, null);
         
         let responseText = typeof response === 'string' ? response : (response?.reply || response?.text || 'Analysis complete.');
         const aiMsg = { id: (Date.now() + 1).toString(), text: responseText, sender: 'ai', timestamp: new Date() };
@@ -1814,6 +1825,7 @@ Please continue the conversation naturally using this context. Never ask the use
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-3 select-none">
+          <LanguageToggle lang={toolkitLanguage === 'Hindi' ? 'hi' : 'en'} onChange={(l) => setToolkitLanguage(l === 'hi' ? 'Hindi' : 'English')} />
           {/* Export Chat dropdown */}
           <div className="relative">
             <button

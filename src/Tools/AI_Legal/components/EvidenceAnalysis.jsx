@@ -12,6 +12,7 @@ import { generateChatResponse } from '../../../services/geminiService';
 import { apiService } from '../../../services/apiService';
 import { consumePrefillIntent, mapCaseToForm } from '../services/activeModuleService';
 import useOutputLanguage from '../hooks/useOutputLanguage';
+import { useLanguage } from '../../../context/LanguageContext';
 import LanguageToggle from './shared/LanguageToggle';
 
 const cleanObjectStrings = (obj) => {
@@ -193,6 +194,7 @@ const EVIDENCE_TYPES = [
 ];
 
 const EvidenceAnalysis = ({ currentCase, onBack, theme, allProjects = [], onUpdateCase }) => {
+  const { toolkitLanguage, setToolkitLanguage } = useLanguage();
   const isDark = theme === 'dark';  
   // Workspace context states
   const [linkedCaseId, setLinkedCaseId] = useState(currentCase?._id || '');
@@ -967,7 +969,7 @@ JSON Schema:
       setScanPhase('generating');
       let textResponse = '';
       try {
-        const response = await generateChatResponse([], promptQuery, systemPrompt, attachments, 'English', null, 'legal');
+        const response = await generateChatResponse([], promptQuery, systemPrompt, attachments, toolkitLanguage || 'English', null, 'legal');
         textResponse = response?.reply || response || '';
       } catch (apiErr) {
         console.warn("API request failed, generating offline rule-based report:", apiErr);
@@ -1552,7 +1554,7 @@ JSON Schema:
         Perform the comparison and output the JSON object.
       `;
 
-      const response = await generateChatResponse([], promptQuery, systemPrompt, [], 'English', null, 'legal');
+      const response = await generateChatResponse([], promptQuery, systemPrompt, [], toolkitLanguage || 'English', null, 'legal');
       const textResponse = response?.reply || response || '';
 
       const parsed = parseRobustJSON(textResponse);
@@ -2993,7 +2995,8 @@ JSON Schema:
         </div>
 
         {/* Right Side: Active Case Selector & Evidence Library button */}
-        <div className="flex items-center gap-3 sm:gap-5 w-full md:w-auto justify-between md:justify-end mt-1 md:mt-0">
+        <div className="flex items-center gap-3 sm:gap-5 w-full md:w-auto justify-between md:justify-end mt-1 md:mt-0 select-none">
+          <LanguageToggle lang={toolkitLanguage === 'Hindi' ? 'hi' : 'en'} onChange={(l) => setToolkitLanguage(l === 'hi' ? 'Hindi' : 'English')} />
           {/* Active Case Selector */}
           <div className="flex flex-col text-left flex-1 md:flex-none min-w-0">
             <span className="text-[7.5px] md:text-[8.5px] font-black text-slate-455 uppercase tracking-wider block font-bold">Current Case</span>

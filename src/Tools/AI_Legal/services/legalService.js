@@ -3,6 +3,9 @@ import { API } from '../../../types.js';
 import { apiService } from '../../../services/apiService.js';
 import { generateChatResponse } from '../../../services/geminiService.js';
 
+const getActiveLanguage = () => {
+    return localStorage.getItem('ai_legal_lang') || 'English';
+};
 
 export const legalService = {
     // --- Case Management ---
@@ -1117,7 +1120,7 @@ Your output must be a single JSON object. Do NOT wrap it in markdown code blocks
 }
 `;
 
-            const res = await generateChatResponse([], prompt, systemInstruction, null, 'English', null, 'LEGAL_TOOLKIT');
+            const res = await generateChatResponse([], prompt, systemInstruction, null, getActiveLanguage(), null, 'LEGAL_TOOLKIT');
             let parsed = { events: [], suggestions: [], deadlines: [], missingDocuments: [] };
             if (res) {
                 let text = '';
@@ -1292,7 +1295,7 @@ Your output must be a single JSON array of objects. Do NOT wrap it in markdown c
 ]
 `;
 
-            const res = await generateChatResponse([], prompt, systemInstruction, null, 'English', null, 'LEGAL_TOOLKIT');
+            const res = await generateChatResponse([], prompt, systemInstruction, null, getActiveLanguage(), null, 'LEGAL_TOOLKIT');
             let parsed = [];
             if (res) {
                 let text = '';
@@ -1437,7 +1440,7 @@ Your output must be a single JSON object. Return ONLY the raw JSON string matchi
 }
 `;
 
-            const res = await generateChatResponse([], prompt, systemInstruction, null, 'English', null, 'LEGAL_TOOLKIT');
+            const res = await generateChatResponse([], prompt, systemInstruction, null, getActiveLanguage(), null, 'LEGAL_TOOLKIT');
             let parsed = null;
             if (res) {
                 let text = '';
@@ -1651,7 +1654,7 @@ Return ONLY a valid raw JSON object matching this structure:
                 });
             }
 
-            const res = await generateChatResponse([], prompt, systemInstruction, attachments, 'English', null, 'LEGAL_TOOLKIT');
+            const res = await generateChatResponse([], prompt, systemInstruction, attachments, getActiveLanguage(), null, 'LEGAL_TOOLKIT');
             let parsed = {};
             if (res) {
                 let text = '';
@@ -1893,7 +1896,7 @@ Your output must be a single JSON object. Return ONLY the raw JSON string matchi
 }
 `;
 
-            const res = await generateChatResponse([], prompt, systemInstruction, null, 'English', null, 'LEGAL_TOOLKIT');
+            const res = await generateChatResponse([], prompt, systemInstruction, null, getActiveLanguage(), null, 'LEGAL_TOOLKIT');
             let parsed = null;
             if (res) {
                 let text = '';
@@ -2063,7 +2066,7 @@ Your output must be a single JSON object. Return ONLY the raw JSON string matchi
 }
 `;
 
-            const res = await generateChatResponse([], prompt, systemInstruction, null, 'English', null, 'LEGAL_TOOLKIT');
+            const res = await generateChatResponse([], prompt, systemInstruction, null, getActiveLanguage(), null, 'LEGAL_TOOLKIT');
             let parsed = null;
             if (res) {
                 let text = '';
