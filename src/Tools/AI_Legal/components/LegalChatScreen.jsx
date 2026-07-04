@@ -1138,7 +1138,7 @@ Please continue the conversation naturally using this context. Never ask the use
         mapped.sort((a, b) => b.timestamp - a.timestamp);
         setSessions(mapped);
 
-        const isPathNew = window.location.pathname.endsWith('/new');
+        const isPathNew = window.location.pathname.endsWith('/new') || location.state?.newChat;
 
         if (!isPathNew) {
           if (mapped.length > 0) {
@@ -1147,6 +1147,19 @@ Please continue the conversation naturally using this context. Never ask the use
             await loadSessionHistory(mapped[0].chat_id);
           } else {
             await handleNewChat(false);
+          }
+        } else {
+          await handleNewChat(false);
+          if (location.state?.newChat) {
+            try {
+              const stateCopy = { ...window.history.state };
+              if (stateCopy.usr) {
+                stateCopy.usr = { ...stateCopy.usr, newChat: false };
+              }
+              window.history.replaceState(stateCopy, '');
+            } catch (e) {
+              console.warn('[LegalChatScreen] Failed to clear history state:', e);
+            }
           }
         }
       } catch (e) {
