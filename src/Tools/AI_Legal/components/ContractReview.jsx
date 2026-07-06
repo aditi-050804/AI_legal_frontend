@@ -225,7 +225,7 @@ Section 9. Governing Law: Subject to Courts of Delhi.`;
 };
 
 const ContractReview = ({ currentCase, onBack, theme, allProjects = [], onUpdateCase }) => {
-  const { toolkitLanguage, setToolkitLanguage } = useLanguage();
+  const { toolkitLanguage, setToolkitLanguage, tLegal: t } = useLanguage();
   const isDark = theme === 'dark';
   
   // Platform States
@@ -246,7 +246,98 @@ const ContractReview = ({ currentCase, onBack, theme, allProjects = [], onUpdate
   // Audit States
   const [isAuditing, setIsAuditing] = useState(false);
   const [auditStep, setAuditStep] = useState('');
-  const [auditResult, setAuditResult] = useState(null);
+  const [rawAuditResult, setRawAuditResult] = useState(null);
+  const [translatedAuditResult, setTranslatedAuditResult] = useState(null);
+  const originalResultLangRef = useRef('en');
+
+  const activeAuditResult = useMemo(() => {
+    const currentTargetLang = toolkitLanguage === 'Hindi' ? 'hi' : 'en';
+    if (currentTargetLang === originalResultLangRef.current || !translatedAuditResult) {
+      return rawAuditResult;
+    }
+    return translatedAuditResult;
+  }, [toolkitLanguage, translatedAuditResult, rawAuditResult]);
+
+  const auditResult = activeAuditResult;
+
+  const deepTranslateAuditResult = useCallback(async (result, translateFn) => {
+    if (!result) return null;
+
+    const EXCLUDED_KEYS = new Set([
+      'id', '_id', 'risk', 'status', 'confidence', 'overallScore', 'riskScore',
+      'complianceScore', 'negotiationScore', 'missingClausesCount', 'confidenceRate',
+      'highRiskClausesCount', 'mediumRiskClausesCount', 'lowRiskClausesCount', 'totalClausesCount',
+      'timeSaved', 'reviewStatus', 'effectiveDate', 'expiryDate', 'duration', 'date', 'timestamp',
+      'taxes', 'deposit', 'penalty', 'lateFees', 'renewalCharges', 'interest', 'unfair'
+    ]);
+
+    const isBypass = (str) => {
+      if (!str || typeof str !== 'string') return true;
+      const trimmed = str.trim();
+      if (!trimmed) return true;
+      if (/^[0-9a-fA-F]{32,64}$/.test(trimmed)) return true;
+      if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(trimmed)) return true;
+      if (/^\d+(%|\/\d+)?$/.test(trimmed)) return true;
+      if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return true;
+      return false;
+    };
+
+    const translatableList = [];
+
+    const traverseCollect = (val, path) => {
+      if (val === null || val === undefined) return;
+      if (typeof val === 'string') {
+        const lastKey = path.split('.').pop();
+        if (!EXCLUDED_KEYS.has(lastKey) && !isBypass(val)) {
+          translatableList.push({ path, original: val });
+        }
+      } else if (Array.isArray(val)) {
+        val.forEach((item, index) => traverseCollect(item, `${path}[${index}]`));
+      } else if (typeof val === 'object') {
+        Object.keys(val).forEach(key => {
+          traverseCollect(val[key], path ? `${path}.${key}` : key);
+        });
+      }
+    };
+
+    traverseCollect(result, '');
+
+    if (translatableList.length === 0) return result;
+
+    const delimiter = ' ||| ';
+    const joinedText = translatableList.map(item => item.original).join(delimiter);
+
+    const translatedText = await translateFn(joinedText);
+    const translatedSegments = translatedText.split('|||').map(s => s.trim());
+
+    const cloned = JSON.parse(JSON.stringify(result));
+
+    const setValueAtPath = (obj, path, value) => {
+      const parts = path.split(/\.|\[|\]/).filter(Boolean);
+      let current = obj;
+      for (let i = 0; i < parts.length - 1; i++) {
+        current = current[parts[i]];
+      }
+      const lastKey = parts[parts.length - 1];
+      if (current) {
+        current[lastKey] = value;
+      }
+    };
+
+    if (translatedSegments.length === translatableList.length) {
+      translatableList.forEach((item, idx) => {
+        setValueAtPath(cloned, item.path, translatedSegments[idx]);
+      });
+    } else {
+      console.warn(`[deepTranslate] translation segment count mismatch: got ${translatedSegments.length}, expected ${translatableList.length}. Mapping sequentially.`);
+      translatableList.forEach((item, idx) => {
+        const translatedVal = translatedSegments[idx] || item.original;
+        setValueAtPath(cloned, item.path, translatedVal);
+      });
+    }
+
+    return cloned;
+  }, []);
   
   // Tabs & Views
   const [activeTab, setActiveTab] = useState('summary'); // 'summary' | 'clauses' | 'missing' | 'risks' | 'compliance' | 'financials' | 'obligations' | 'dates' | 'compare' | 'chat' | 'logs'
@@ -474,35 +565,49 @@ const ContractReview = ({ currentCase, onBack, theme, allProjects = [], onUpdate
 
   // Reset display when auditResult changes
   useEffect(() => {
-    if (auditResult?.finalOpinion?.reasoning) {
-      setContractOpinionDisplay(auditResult.finalOpinion.reasoning);
-      setContractLang('en');
+    if (rawAuditResult?.finalOpinion?.reasoning) {
+      setContractOpinionDisplay(rawAuditResult.finalOpinion.reasoning);
+      originalResultLangRef.current = toolkitLanguage === 'Hindi' ? 'hi' : 'en';
     }
-  }, [auditResult]); // eslint-disable-line
+  }, [rawAuditResult]); // eslint-disable-line
 
-  const handleContractLangChange = useCallback(async (newLang) => {
-    setContractLang(newLang);
-    const text = auditResult?.finalOpinion?.reasoning;
-    if (!text) return;
-    if (newLang === 'en') {
-      setContractOpinionDisplay(text);
+  // Traversal deep translation effect when toolkitLanguage changes
+  useEffect(() => {
+    if (!rawAuditResult) {
+      setTranslatedAuditResult(null);
       return;
     }
-    const cached = getContractDisplayText(text);
-    if (cached && cached !== text) {
-      setContractOpinionDisplay(cached);
+    const currentTargetLang = toolkitLanguage === 'Hindi' ? 'hi' : 'en';
+    if (currentTargetLang === originalResultLangRef.current) {
+      setTranslatedAuditResult(null);
+      if (rawAuditResult?.finalOpinion?.reasoning) {
+        setContractOpinionDisplay(rawAuditResult.finalOpinion.reasoning);
+      }
       return;
     }
-    setIsContractTranslating(true);
-    try {
-      const translated = await translateContractText(text);
-      if (contractMountedRef.current) setContractOpinionDisplay(translated);
-    } catch {
-      if (contractMountedRef.current) setContractOpinionDisplay(text);
-    } finally {
-      if (contractMountedRef.current) setIsContractTranslating(false);
-    }
-  }, [auditResult, getContractDisplayText, setContractLang, setIsContractTranslating, translateContractText]);
+
+    const runTranslation = async () => {
+      setIsContractTranslating(true);
+      try {
+        const translated = await deepTranslateAuditResult(rawAuditResult, translateContractText);
+        if (contractMountedRef.current) {
+          setTranslatedAuditResult(translated);
+          if (translated?.finalOpinion?.reasoning) {
+            setContractOpinionDisplay(translated.finalOpinion.reasoning);
+          }
+        }
+      } catch (e) { 
+        console.error("[ContractReview] Traversal translation failed:", e);
+      } finally {
+        if (contractMountedRef.current) setIsContractTranslating(false);
+      }
+    };
+    runTranslation();
+  }, [rawAuditResult, toolkitLanguage, translateContractText, setIsContractTranslating, deepTranslateAuditResult]);
+
+  const handleContractLangChange = useCallback((newLang) => {
+    setToolkitLanguage(newLang === 'hi' ? 'Hindi' : 'English');
+  }, [setToolkitLanguage]);
 
   // --- Initialize and Hydrate from Database ---
   useEffect(() => {
@@ -595,7 +700,7 @@ const ContractReview = ({ currentCase, onBack, theme, allProjects = [], onUpdate
     setContractTitle('');
     setContractText('');
     setFiles([]);
-    setAuditResult(null);
+    setRawAuditResult(null);
     setVersions([]);
     setAuditLogs([]);
     setChatHistory([]);
@@ -654,7 +759,7 @@ const ContractReview = ({ currentCase, onBack, theme, allProjects = [], onUpdate
         setSelectedAnalysisFileId(targetFile.id);
         setContractTitle(targetFile.name);
         setContractText(targetFile.ocrText || '');
-        setAuditResult(targetFile.contractAnalysis || ci?.auditResult || null);
+        setRawAuditResult(targetFile.contractAnalysis || ci?.auditResult || null);
         setVersions(targetFile.versions || ci?.versions || []);
         setAuditLogs(targetFile.auditLogs || ci?.auditLogs || []);
         setChatHistory(ci?.chatHistory || []);
@@ -671,7 +776,7 @@ const ContractReview = ({ currentCase, onBack, theme, allProjects = [], onUpdate
         setSelectedAnalysisFileId(null);
         setContractTitle('');
         setContractText('');
-        setAuditResult(null);
+        setRawAuditResult(null);
         setVersions([]);
         setAuditLogs([]);
         setChatHistory([]);
@@ -681,7 +786,7 @@ const ContractReview = ({ currentCase, onBack, theme, allProjects = [], onUpdate
       setFiles([]);
       setContractTitle('');
       setContractText('');
-      setAuditResult(null);
+      setRawAuditResult(null);
       setVersions([]);
       setAuditLogs([]);
       setChatHistory([]);
@@ -1322,7 +1427,7 @@ Provide a comparative analysis in JSON format:
 
   const performContractAuditInternal = async (title, text, activeFiles, activeVersions, activeLogs, loadingMsg, action = 'all') => {
     setIsAuditing(true);
-    setAuditResult(null);
+    setRawAuditResult(null);
     setAuditStep('OCR Scanning Check...');
 
     const toastId = toast.loading(loadingMsg || "AI Platform auditing contract parameters...");
@@ -1850,7 +1955,7 @@ DO NOT fabricate clauses that are not present in the Contract Document.`;
       }
 
 
-      setAuditResult(parsedResult);
+      setRawAuditResult(parsedResult);
       toast.success("AI Contract intelligence report compiled!", { id: toastId });
 
       if (action === 'summary' || action === 'all') {
@@ -2570,7 +2675,7 @@ SUMMARY INFO:
         setActiveFileId('');
         setContractTitle('');
         setContractText('');
-        setAuditResult(null);
+        setRawAuditResult(null);
       }
     }
     
@@ -3013,13 +3118,13 @@ SUMMARY INFO:
                   </div>
                 )}
                 <div className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">
-                  {linkedCaseId ? "Case Active • Staged Workspace" : "Detached Draft • Manual Scope"}
+                  {linkedCaseId ? (t('caseActiveStagedWorkspace') || "Case Active • Staged Workspace") : (t('detachedDraftManualScope') || "Detached Draft • Manual Scope")}
                 </div>
               </div>
 
               {/* 2. CONTRACT UPLOAD */}
               <div className="space-y-1.5 shrink-0">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-550">Upload</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-550">{t('upload') || "Upload"}</span>
                 <div 
                   className={`border border-dashed rounded-xl p-3 text-center transition-all relative hover:bg-indigo-500/5 ${
                     isDark ? 'border-slate-850 bg-[#131c31]/10' : 'border-slate-200 bg-slate-50/50'
@@ -3053,12 +3158,12 @@ SUMMARY INFO:
                   />
                   <div className="flex items-center justify-center gap-1.5">
                     <UploadCloud size={14} className="text-indigo-500 animate-pulse" />
-                    <span className="text-[9px] font-black text-slate-700 dark:text-slate-300 uppercase">Drop or Browse contract</span>
+                    <span className="text-[9px] font-black text-slate-700 dark:text-slate-300 uppercase">{t('dropOrBrowseContract') || "Drop or Browse contract"}</span>
                   </div>
                   <div className="flex items-center justify-center gap-2 mt-1.5 text-[7.5px] font-extrabold text-slate-400">
-                    <span className="flex items-center gap-0.5 text-emerald-500"><BadgeCheck size={9} /> OCR READY</span>
+                    <span className="flex items-center gap-0.5 text-emerald-500"><BadgeCheck size={9} /> {t('ocrReady') || "OCR READY"}</span>
                     <span>•</span>
-                    <span className="flex items-center gap-0.5 text-indigo-500"><Lock size={9} /> ENCRYPTED</span>
+                    <span className="flex items-center gap-0.5 text-indigo-500"><Lock size={9} /> {t('encrypted') || "ENCRYPTED"}</span>
                   </div>
                 </div>
 
@@ -3093,7 +3198,7 @@ SUMMARY INFO:
                               setActiveFileId(null);
                               setContractText('');
                             }
-                            toast.success("Contract removed");
+                            toast.success(t('contractRemoved') || "Contract removed");
                           }}
                           className="p-1 hover:text-red-500 rounded shrink-0"
                         >
@@ -3107,22 +3212,22 @@ SUMMARY INFO:
 
               {/* 3. QUICK ACTIONS */}
               <div className="space-y-1.5 shrink-0">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-550">Quick Actions</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-550">{t('quickActions') || "Quick Actions"}</span>
                 {/* Disabled banner when no contract */}
                 {!contractText.trim() && linkedCaseId && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 text-[8.5px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide">
                     <Upload size={9} className="shrink-0" />
-                    Upload a contract to enable AI actions
+                    {t('uploadContractToEnable') || "Upload a contract to enable AI actions"}
                   </div>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {[
-                    { id: 'summary', name: 'Analyze', icon: Sparkles, runAudit: true },
-                    { id: 'heatmap', name: 'Risk Scan', icon: AlertTriangle },
-                    { id: 'clauses', name: 'Clauses', icon: NotebookPen },
-                    { id: 'compliance', name: 'Compliance', icon: ShieldCheck },
-                    { id: 'negotiation', name: 'Negotiate', icon: GitCompareArrows },
-                    { id: 'redraft', name: 'Redraft', icon: FilePenLine },
+                    { id: 'summary', name: t('analyze') || 'Analyze', icon: Sparkles, runAudit: true },
+                    { id: 'heatmap', name: t('riskScan') || 'Risk Scan', icon: AlertTriangle },
+                    { id: 'clauses', name: t('clauses') || 'Clauses', icon: NotebookPen },
+                    { id: 'compliance', name: t('compliance') || 'Compliance', icon: ShieldCheck },
+                    { id: 'negotiation', name: t('negotiate') || 'Negotiate', icon: GitCompareArrows },
+                    { id: 'redraft', name: t('redraft') || 'Redraft', icon: FilePenLine },
                   ].map(act => {
                     const IconComp = act.icon;
                     const isActive = activeTab === act.id;
@@ -3135,12 +3240,12 @@ SUMMARY INFO:
                             if (noContract) return;
                             setActiveTab(act.id);
                             handleQuickActionClick(act.id);
-                            let customLoadingMsg = "AI Platform auditing contract parameters...";
-                            if (act.id === 'heatmap') customLoadingMsg = "AI Platform scanning risk vectors & heatmap matrix...";
-                            if (act.id === 'clauses') customLoadingMsg = "AI Platform detecting active clauses & replacement standards...";
-                            if (act.id === 'compliance') customLoadingMsg = "AI Platform checking compliance against Indian Contract Act & related statutes...";
-                            if (act.id === 'negotiation') customLoadingMsg = "AI Platform building negotiation suggestions & fallback language...";
-                            if (act.id === 'redraft') customLoadingMsg = "AI Platform generating side-by-side redrafted contract drafts...";
+                            let customLoadingMsg = t('auditLoading') || "AI Platform auditing contract parameters...";
+                            if (act.id === 'heatmap') customLoadingMsg = t('riskScanLoading') || "AI Platform scanning risk vectors & heatmap matrix...";
+                            if (act.id === 'clauses') customLoadingMsg = t('clausesLoading') || "AI Platform detecting active clauses & replacement standards...";
+                            if (act.id === 'compliance') customLoadingMsg = t('complianceLoading') || "AI Platform checking compliance against Indian Contract Act & related statutes...";
+                            if (act.id === 'negotiation') customLoadingMsg = t('negotiationLoading') || "AI Platform building negotiation suggestions & fallback language...";
+                            if (act.id === 'redraft') customLoadingMsg = t('redraftLoading') || "AI Platform generating side-by-side redrafted contract drafts...";
                             await performContractAuditInternal(contractTitle, contractText, files, versions, auditLogs, customLoadingMsg, act.id);
                           }}
                           className={`w-full flex items-center gap-1.5 px-2.5 py-2 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all min-h-[36px] ${
@@ -4954,7 +5059,7 @@ SUMMARY INFO:
                           setActiveFileId(f.id);
                           setContractTitle(f.name);
                           setContractText(f.ocrText || '');
-                          setAuditResult(null);
+                          setRawAuditResult(null);
                         }}
                         className="accent-indigo-600"
                       />
@@ -4994,7 +5099,7 @@ SUMMARY INFO:
               <Search size={14} className="text-slate-400 mr-2" />
               <input 
                 type="text"
-                placeholder="Search audit trail logs..."
+                placeholder={t('searchAuditTrailLogs') || "Search audit trail logs..."}
                 className="w-full bg-transparent border-none text-xs font-bold text-slate-800 dark:text-white outline-none focus:ring-0"
                 value={historySearch}
                 onChange={e => setHistorySearch(e.target.value)}
@@ -5021,7 +5126,7 @@ SUMMARY INFO:
               {auditLogs.length === 0 && (
                 <div className="text-center py-10">
                   <Folder size={32} className="mx-auto text-slate-350 dark:text-zinc-700" />
-                  <p className="text-xs font-semibold text-slate-400 mt-2">No audit logs synced to database yet.</p>
+                  <p className="text-xs font-semibold text-slate-400 mt-2">{t('noAuditLogsSynced') || "No audit logs synced to database yet."}</p>
                 </div>
               )}
             </div>
@@ -5036,7 +5141,7 @@ SUMMARY INFO:
           <div className="relative bg-white dark:bg-zinc-900 border border-slate-250 dark:border-zinc-800 rounded-[32px] max-w-xl w-full max-h-[85%] flex flex-col overflow-hidden shadow-2xl p-6">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4 shrink-0">
               <div>
-                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">AI Clause Rewrite Engine</h3>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">{t('aiClauseRewriteEngine') || "AI Clause Rewrite Engine"}</h3>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{activeRewriteClause.name}</p>
               </div>
               <button onClick={() => setActiveRewriteClause(null)} className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full">
@@ -5046,7 +5151,7 @@ SUMMARY INFO:
 
             <div className="flex-1 overflow-y-auto mt-4 space-y-4 custom-scrollbar">
               <div>
-                <label className="text-[9px] font-black uppercase tracking-widest text-slate-450">Original Clause text</label>
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-450">{t('originalClauseText') || "Original Clause text"}</label>
                 <blockquote className="p-3 bg-slate-500/5 rounded-xl font-mono text-[10px] leading-relaxed text-slate-400 mt-1 select-text">
                   "{activeRewriteClause.text}"
                 </blockquote>
@@ -5054,11 +5159,11 @@ SUMMARY INFO:
 
               {/* Tone Selection */}
               <div className="space-y-1.5">
-                <label className="text-[9px] font-black uppercase tracking-widest text-slate-450">Draft Tone Wording</label>
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-450">{t('draftToneWording') || "Draft Tone Wording"}</label>
                 <div className="flex gap-1.5 overflow-x-auto pb-1 max-w-full">
                   {['Balanced', 'Professional', 'Court-safe', 'Legally Strong'].map(tone => (
                     <button
-                      key={tone}
+                      key={t(tone) || tone}
                       onClick={() => setRewriteTone(tone)}
                       className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${rewriteTone === tone ? 'bg-indigo-650 text-white' : 'bg-slate-100 dark:bg-zinc-800 text-slate-500'}`}
                     >
@@ -5074,12 +5179,12 @@ SUMMARY INFO:
                 className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 <RefreshCw size={12} className={isRewriting ? 'animate-spin' : ''} />
-                <span>Generate Rewritten Clause</span>
+                <span>{t('generateRewrittenClause') || "Generate Rewritten Clause"}</span>
               </button>
 
               {rewrittenWording && (
                 <div className="space-y-1.5 animate-fadeIn">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-emerald-500">AI Rewritten Alternate</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-emerald-500">{t('aiRewrittenAlternate') || "AI Rewritten Alternate"}</label>
                   <blockquote className="p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/10 font-mono text-[10px] leading-relaxed text-emerald-600 dark:text-emerald-400 select-text">
                     "{rewrittenWording}"
                   </blockquote>
@@ -5093,14 +5198,14 @@ SUMMARY INFO:
                 onClick={() => setActiveRewriteClause(null)}
                 className="flex-1 py-3 border border-slate-200 dark:border-zinc-800 rounded-xl font-black text-xs text-slate-500 uppercase tracking-wider"
               >
-                Cancel
+                {t('cancel') || "Cancel"}
               </button>
               <button
                 onClick={applyRewrittenClause}
                 disabled={!rewrittenWording}
                 className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all disabled:opacity-50"
               >
-                Apply Edit Draft
+                {t('applyEditDraft') || "Apply Edit Draft"}
               </button>
             </div>
           </div>
@@ -5115,7 +5220,7 @@ SUMMARY INFO:
           }`}>
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800 pb-3">
               <h3 className="text-xs font-black uppercase text-indigo-500 tracking-wider flex items-center gap-1.5">
-                <FolderKanban size={14} /> Create Case Matter Profile
+                <FolderKanban size={14} /> {t('createCaseMatterProfile') || "Create Case Matter Profile"}
               </h3>
               <button onClick={() => setIsCreateCaseModalOpen(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full">
                 <X size={14} className="text-slate-400" />
@@ -5124,7 +5229,7 @@ SUMMARY INFO:
 
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">Case Name</label>
+                <label className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">{t('caseName') || "Case Name"}</label>
                 <input
                   type="text"
                   placeholder="e.g. Rajesh Sharma vs Amit Verma"
@@ -5138,7 +5243,7 @@ SUMMARY INFO:
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">Client Name</label>
+                  <label className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">{t('clientName') || "Client Name"}</label>
                   <input
                     type="text"
                     placeholder="e.g. Rajesh Sharma"
@@ -5150,7 +5255,7 @@ SUMMARY INFO:
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">Opponent Name</label>
+                  <label className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">{t('opponentName') || "Opponent Name"}</label>
                   <input
                     type="text"
                     placeholder="e.g. Amit Verma"
@@ -5164,7 +5269,7 @@ SUMMARY INFO:
               </div>
 
               <div className="space-y-1">
-                <label className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">Case Matter Type</label>
+                <label className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">{t('caseMatterType') || "Case Matter Type"}</label>
                 <select
                   className={`w-full px-3 py-2 border rounded-xl outline-none text-[10px] font-bold ${
                     isDark ? 'bg-black/20 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
@@ -5172,19 +5277,19 @@ SUMMARY INFO:
                   value={newCaseType}
                   onChange={e => setNewCaseType(e.target.value)}
                 >
-                  <option value="Civil Suit">Civil Suit</option>
-                  <option value="Commercial Dispute">Commercial Dispute</option>
-                  <option value="Consumer Case">Consumer Case</option>
-                  <option value="Contract Matter">Contract Matter</option>
-                  <option value="Employment Matter">Employment Matter</option>
-                  <option value="IT Wording Audit">IT Wording Audit</option>
+                  <option value="Civil Suit">{t('Civil Suit') || "Civil Suit"}</option>
+                  <option value="Commercial Dispute">{t('Commercial Dispute') || "Commercial Dispute"}</option>
+                  <option value="Consumer Case">{t('Consumer Case') || "Consumer Case"}</option>
+                  <option value="Contract Matter">{t('Contract Matter') || "Contract Matter"}</option>
+                  <option value="Employment Matter">{t('Employment Matter') || "Employment Matter"}</option>
+                  <option value="IT Wording Audit">{t('IT Wording Audit') || "IT Wording Audit"}</option>
                 </select>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">Brief Overview / Description</label>
+                <label className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">{t('briefOverviewDescription') || "Brief Overview / Description"}</label>
                 <textarea
-                  placeholder="Summarize the core legal issue..."
+                  placeholder={t('summarizeCoreLegalIssue') || "Summarize the core legal issue..."}
                   rows={3}
                   className={`w-full px-3 py-2 border rounded-xl outline-none text-[10px] font-bold resize-none ${
                     isDark ? 'bg-black/20 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
@@ -5200,7 +5305,7 @@ SUMMARY INFO:
                 onClick={() => setIsCreateCaseModalOpen(false)}
                 className={`flex-1 py-2.5 border rounded-xl font-black text-xs uppercase tracking-wider text-slate-405 dark:border-zinc-805 hover:bg-slate-50 dark:hover:bg-zinc-850 transition-colors`}
               >
-                Cancel
+                {t('cancel') || "Cancel"}
               </button>
               <button
                 onClick={async () => {
@@ -5232,7 +5337,7 @@ SUMMARY INFO:
                     setNewCaseClient('');
                     setNewCaseOpponent('');
                     setNewCaseSummary('');
-                    toast.success("📁 New Case Matter Profile linked successfully!");
+                    toast.success(t('newCaseLinkedSuccess') || "📁 New Case Matter Profile linked successfully!");
                   } catch (e) {
                     console.error(e);
                     toast.error("Failed to link case profile.");

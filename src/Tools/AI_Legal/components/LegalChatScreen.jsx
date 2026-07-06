@@ -22,24 +22,93 @@ import { useLanguage } from '../../../context/LanguageContext';
 import useOutputLanguage from '../hooks/useOutputLanguage';
 import { exportToPDF } from '../utils/exportToPDF';
 
-// ─── LEGAL SYSTEM INSTRUCTION ────────────────────────────────────────────────
 const LEGAL_SYSTEM_INSTRUCTION = `You are the AISA AI General Legal Chat Assistant. You are an expert in law.
-Provide comprehensive, structured legal analysis. Always format your responses using these structural blocks:
-1. SUMMARY: A brief 2-3 sentence overview.
-2. DEFINITION: Precise legal definition.
-3. RELEVANT STATUTES / LAW: Highlight the specific acts/sections using "> [!STATUTE] Section Name: Text".
-4. DETAILED EXPLANATION: Broken down into logical sub-headings.
-5. IMPORTANT POINTS: Numbered list.
-6. EXCEPTIONS / CLAUSES: Bulleted list of exceptions or qualifications. Use "> [!WARNING] Warning Info" if there is an important caution.
-7. RELEVANT CASE LAWS: Important Supreme Court/High Court precedents. Use "> [!CASE] Case Name: Holding".
-8. PRACTICAL EXAMPLE / SCENARIO: A realistic hypothetical scenario explaining how this law applies in practice.
-9. CONCLUSION: Professional closing note.
+Respond like a natural, professional conversational AI assistant (e.g. ChatGPT, Gemini, Claude) to provide precise, direct legal analysis and guidance.
+
+STRICT CONVERSATIONAL RULES:
+- DO NOT start your response with headers like "AI CASE REPORT", "[ACTIVE TOOL: ...]", "CURRENT DATE & TIME", "USER IDENTIFICATION", "Hello Admin", or any system/prompts metadata.
+- DO NOT force structured report blocks (such as "SUMMARY", "DEFINITION", etc.) unless the user explicitly requested a structured report. Respond in clean, readable prose paragraphs.
+- Begin your answer directly.
+- Maintain conversation context across follow-up queries naturally.
 
 STRICT RULES:
 - Never fabricate citations or statutes. If no citation is found, write Citation Not Available.
 - Respond in the same language as the user's prompt (e.g. Hindi, English).
 - Always use the legal styling callouts: [!IMPORTANT], [!WARNING], [!CASE], and [!STATUTE] inside markdown blockquotes to structure critical callouts.
 `;
+
+const detectPreferredLanguage = (query, history, uiLanguage) => {
+  const lowerQuery = query.toLowerCase();
+  const hindiExplicit = /\b(in\s+)?hindi\b|hindi\s+me|हिंदी|हिन्दी/i;
+  const englishExplicit = /\b(in\s+)?english\b|english\s+me|अंग्रेजी|अंग्रेज़ी/i;
+
+  if (hindiExplicit.test(lowerQuery)) {
+    return 'Hindi';
+  }
+  if (englishExplicit.test(lowerQuery)) {
+    return 'English';
+  }
+
+  const devanagariPattern = /[\u0900-\u097F]/;
+  const hinglishKeywords = /\b(batao|bataiye|samjhao|samjhaao|samjhaiye|kya\s+hai|kaise|saza|saja|kanoon|kanun|nayan|nyaya|faisla|nirnay|tarikh|tareekh|yachika|mota|moti)\b/i;
+  
+  if (devanagariPattern.test(query) || hinglishKeywords.test(lowerQuery)) {
+    return 'Hindi';
+  }
+
+  if (Array.isArray(history) && history.length > 0) {
+    for (let i = history.length - 1; i >= 0; i--) {
+      const msg = history[i];
+      const text = msg.text || msg.content || '';
+      if (!text) continue;
+      
+      if (hindiExplicit.test(text.toLowerCase())) return 'Hindi';
+      if (englishExplicit.test(text.toLowerCase())) return 'English';
+      
+      if (devanagariPattern.test(text)) return 'Hindi';
+    }
+  }
+
+  return uiLanguage === 'Hindi' ? 'Hindi' : 'English';
+};
+
+const isLanguageSwitchQuery = (query) => {
+  if (!query) return false;
+  const q = query.trim().toLowerCase().replace(/[?.!,]/g, '');
+  const switchPhrases = [
+    'hindi me samjhao',
+    'हिंदी में समझाओ',
+    'explain in hindi',
+    'अब हिंदी में बताओ',
+    'english me batao',
+    'translate to hindi',
+    'translate to english',
+    'hindi me',
+    'english me',
+    'translate',
+    'हिंदी में बताओ',
+    'hindi',
+    'हिंदी',
+    'हिन्दी',
+    'english',
+    'translate to hindi',
+    'translate to english',
+    'translate in hindi',
+    'translate in english',
+    'now in hindi',
+    'now in english'
+  ];
+
+  if (switchPhrases.includes(q)) {
+    return true;
+  }
+
+  if (/^(hindi|hindi\s+me|translate|english|english\s+me|हिन्दी|हिंदी)$/i.test(q)) {
+    return true;
+  }
+  
+  return false;
+};
 
 const safeFormatTime = (ts) => {
   if (!ts) return '';
@@ -268,15 +337,6 @@ const AiResponseCard = ({ msg, currentCase, chatIdRef, handleRegenerateMessage, 
     <div className="w-full flex flex-col">
       {/* Dynamic Translated Content Wrapper */}
       <div className="legal-msg-ai-text relative flex-1 text-slate-800 text-[14px]">
-        {/* Language selector block inside card */}
-        <div className="flex items-center justify-between gap-1.5 mb-4 border-b border-slate-100 pb-2">
-          <span className="text-[10px] font-black uppercase text-[#4F46E5] tracking-wider">AI Case Report</span>
-          <LanguageToggle
-            lang={outputLang}
-            onChange={setOutputLang}
-          />
-        </div>
-
         {/* Real Document Content body */}
         <div 
           id={`msg-content-${msg.id}`} 
@@ -836,6 +896,10 @@ Please continue the conversation naturally using this context. Never ask the use
 
   const { toolkitLanguage, setToolkitLanguage } = useLanguage();
   const [messages, setMessages] = useState([]);
+  const messagesRef = useRef([]);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState('');
   const [inputValue, setInputValue] = useState('');
@@ -1065,9 +1129,12 @@ Please continue the conversation naturally using this context. Never ask the use
     checkScrollBottom();
   }, [messages, isTyping, generationState, checkScrollBottom]);
 
-  // ─── FOCUS INPUT ON MOUNT ──────────────────────────────────────────────────
   useEffect(() => {
+    console.log("[LegalChatScreen] Component MOUNTED");
     setTimeout(() => inputRef.current?.focus(), 300);
+    return () => {
+      console.log("[LegalChatScreen] Component UNMOUNTED");
+    };
   }, []);
 
   // ─── CHAT SESSIONS & HISTORY ────────────────────────────────────────────────
@@ -1140,9 +1207,15 @@ Please continue the conversation naturally using this context. Never ask the use
   // Load sessions on mount
   useEffect(() => {
     const loadSessions = async () => {
+      console.log("[LegalChatScreen] loadSessions triggered. currentCase?._id:", currentCase?._id);
       try {
         const dbSessions = await chatStorageService.getSessions(null, 'GENERAL');
-        const filteredDb = dbSessions.filter(s => s.activeTool === 'General Legal Chat');
+        const filteredDb = dbSessions.filter(s => 
+          s.activeTool === 'General Legal Chat' || 
+          !s.activeTool || 
+          s.activeTool === 'General Chat' || 
+          s.activeTool === 'NORMAL_CHAT'
+        );
         
         // Asynchronously populate previews for each session in history
         const mapped = await Promise.all(filteredDb.map(async s => {
@@ -1190,7 +1263,9 @@ Please continue the conversation naturally using this context. Never ask the use
             // Unsaved new session
             chatIdRef.current = activeId;
             setActiveSessionId(activeId);
-            setMessages([]);
+            if (messagesRef.current.length === 0) {
+              setMessages([]);
+            }
           }
         } else {
           // Scenario 1: Fresh conversation on entering general chat
@@ -1221,13 +1296,7 @@ Please continue the conversation naturally using this context. Never ask the use
     }
   }, [location.pathname]);
 
-  // Save history on messages updates if active messages exist
-  useEffect(() => {
-    const activeMessages = messages.filter(m => !m.isIntro);
-    if (activeMessages.length > 0) {
-      saveChatHistory(messages);
-    }
-  }, [messages, saveChatHistory]);
+
 
   // ─── STOP WORKFLOW ─────────────────────────────────────────────────────────
   const handleStop = () => {
@@ -1273,7 +1342,9 @@ Please continue the conversation naturally using this context. Never ask the use
       fullPromptText: hiddenContextText || text,
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    const updatedUserMsgs = [...messages, userMsg];
+    setMessages(updatedUserMsgs);
+    saveChatHistory(updatedUserMsgs);
     setInputValue('');
     setIsTyping(true);
     setGenerationState('streaming');
@@ -1310,20 +1381,60 @@ Please continue the conversation naturally using this context. Never ask the use
         systemInstruction += `- Case Name: ${currentCase.title || currentCase.name || 'N/A'}\n`;
         systemInstruction += `- Case Description: ${currentCase.summary || currentCase.description || 'N/A'}\n`;
       }
-      if (toolkitLanguage === 'Hindi') {
-        systemInstruction += `\n\nCRITICAL: Respond in Hindi (Devanagari script) only. Use professional Indian legal terminology where appropriate.`;
-      }
+      const detectedLanguage = detectPreferredLanguage(promptText, messages, toolkitLanguage);
+      const isSwitch = isLanguageSwitchQuery(promptText) ? 'Yes' : 'No';
+      systemInstruction += `
+\n\n### DYNAMIC LANGUAGE SWITCH & CONTEXT CONTINUITY:
+- Current UI Language: ${toolkitLanguage === 'Hindi' ? 'Hindi' : 'English'}
+- Conversation Preferred Language: ${detectedLanguage}
+- Is User Query a Language/Translation Switch: ${isSwitch}
+
+STRICT RULE FOR LANGUAGE SWITCH (IF YES):
+- DO NOT answer the language switch request message directly (e.g. do not say "Sure, I can translate", do not show greetings/intro, do not show current date/time, and do not show legal disclaimers).
+- Instead, take the IMMEDIATELY PREVIOUS assistant response or the active legal topic, and REGENERATE it entirely in the Conversation Preferred Language.
+- Maintain the exact same formatting, same headings, same citations, same analysis structure, and same reasoning. Only the language is changed.
+
+GREETINGS & DISCLAIMER ONCE RULE (STRICT):
+- Display greetings (e.g., "Hello Admin"), current date/time, legal disclaimer, and assistant introduction ONLY ONCE at the absolute beginning of the conversation.
+- NEVER repeat or print them on follow-up messages, language-switch requests, or context continuation requests. Keep follow-up responses direct, focused, and starting immediately with the content.
+
+LEGAL TERMINOLOGY IN HINDI:
+- When responding in Hindi, use professional Indian legal terms:
+  - Evidence -> साक्ष्य
+  - Court -> न्यायालय
+  - Judgment -> निर्णय
+  - Petitioner -> याचिकाकर्ता
+  - Respondent -> प्रतिवादी
+  - Appeal -> अपील
+  - Legal Notice -> कानूनी नोटिस
+  - Contract -> अनुबंध
+  - Clause -> धारा
+  - Agreement -> समझौता
+  - Relief -> राहत
+  - Jurisdiction -> अधिकार क्षेत्र
+  - Proceedings -> कार्यवाही
+  - Affidavit -> शपथपत्र
+  - Witness -> गवाह
+  - Cross Examination -> जिरह
+  - Supreme Court -> उच्चतम न्यायालय
+  - High Court -> उच्च न्यायालय
+  - District Court -> जिला न्यायालय
+
+THINK IN TARGET LANGUAGE:
+- Generate directly in the target language (Hindi or English). Do not translate post-hoc.
+- Do not mix Hindi and English in the same sentence.
+`;
 
       const response = await generateChatResponse(
         apiHistory,
         promptText,
         systemInstruction,
         apiAttachments,
-        toolkitLanguage || 'English',
+        detectedLanguage,
         abortControllerRef.current.signal,
         'LEGAL_TOOLKIT',
-        null,
-        null
+        chatIdRef.current,
+        currentCase?._id || null
       );
 
       let responseText = '';
@@ -1367,17 +1478,27 @@ Please continue the conversation naturally using this context. Never ask the use
       }
 
       const wasStopped = !isStreamingRef.current;
-      setMessages(prev => prev.map(m => {
+      const finalText = wasStopped ? currentText : responseText;
+      const finalAiMsg = {
+        id: aiMsgId,
+        text: finalText,
+        sender: 'ai',
+        timestamp: new Date(),
+        isStreaming: false,
+        isStopped: wasStopped,
+        fullPromptText: responseText
+      };
+      const finalMsgs = messagesRef.current.map(m => {
         if (m.id === aiMsgId) {
-          return { 
-            ...m, 
-            isStreaming: false, 
-            isStopped: wasStopped,
-            text: wasStopped ? currentText : responseText
-          };
+          return finalAiMsg;
         }
         return m;
-      }));
+      });
+      const exists = finalMsgs.some(m => m.id === aiMsgId);
+      const safeFinalMsgs = exists ? finalMsgs : [...finalMsgs, finalAiMsg];
+
+      setMessages(safeFinalMsgs);
+      saveChatHistory(safeFinalMsgs);
 
       setGenerationState(wasStopped ? 'stopped' : 'completed');
     } catch (error) {
@@ -1475,20 +1596,60 @@ Please continue the conversation naturally using this context. Never ask the use
         systemInstruction += `- Case Name: ${currentCase.title || currentCase.name || 'N/A'}\n`;
         systemInstruction += `- Case Description: ${currentCase.summary || currentCase.description || 'N/A'}\n`;
       }
-      if (toolkitLanguage === 'Hindi') {
-        systemInstruction += `\n\nCRITICAL: Respond in Hindi (Devanagari script) only. Use professional Indian legal terminology where appropriate.`;
-      }
+      const detectedLanguage = detectPreferredLanguage(promptText, messages, toolkitLanguage);
+      const isSwitch = isLanguageSwitchQuery(promptText) ? 'Yes' : 'No';
+      systemInstruction += `
+\n\n### DYNAMIC LANGUAGE SWITCH & CONTEXT CONTINUITY:
+- Current UI Language: ${toolkitLanguage === 'Hindi' ? 'Hindi' : 'English'}
+- Conversation Preferred Language: ${detectedLanguage}
+- Is User Query a Language/Translation Switch: ${isSwitch}
+
+STRICT RULE FOR LANGUAGE SWITCH (IF YES):
+- DO NOT answer the language switch request message directly (e.g. do not say "Sure, I can translate", do not show greetings/intro, do not show current date/time, and do not show legal disclaimers).
+- Instead, take the IMMEDIATELY PREVIOUS assistant response or the active legal topic, and REGENERATE it entirely in the Conversation Preferred Language.
+- Maintain the exact same formatting, same headings, same citations, same analysis structure, and same reasoning. Only the language is changed.
+
+GREETINGS & DISCLAIMER ONCE RULE (STRICT):
+- Display greetings (e.g., "Hello Admin"), current date/time, legal disclaimer, and assistant introduction ONLY ONCE at the absolute beginning of the conversation.
+- NEVER repeat or print them on follow-up messages, language-switch requests, or context continuation requests. Keep follow-up responses direct, focused, and starting immediately with the content.
+
+LEGAL TERMINOLOGY IN HINDI:
+- When responding in Hindi, use professional Indian legal terms:
+  - Evidence -> साक्ष्य
+  - Court -> न्यायालय
+  - Judgment -> निर्णय
+  - Petitioner -> याचिकाकर्ता
+  - Respondent -> प्रतिवादी
+  - Appeal -> अपील
+  - Legal Notice -> कानूनी नोटिस
+  - Contract -> अनुबंध
+  - Clause -> धारा
+  - Agreement -> समझौता
+  - Relief -> राहत
+  - Jurisdiction -> अधिकार क्षेत्र
+  - Proceedings -> कार्यवाही
+  - Affidavit -> शपथपत्र
+  - Witness -> गवाह
+  - Cross Examination -> जिरह
+  - Supreme Court -> उच्चतम न्यायालय
+  - High Court -> उच्च न्यायालय
+  - District Court -> जिला न्यायालय
+
+THINK IN TARGET LANGUAGE:
+- Generate directly in the target language (Hindi or English). Do not translate post-hoc.
+- Do not mix Hindi and English in the same sentence.
+`;
 
       const response = await generateChatResponse(
         precedingHistory,
         promptText,
         systemInstruction,
         [],
-        toolkitLanguage || 'English',
+        detectedLanguage,
         abortControllerRef.current.signal,
         'LEGAL_TOOLKIT',
-        null,
-        null
+        chatIdRef.current,
+        currentCase?._id || null
       );
 
       let responseText = '';
@@ -1538,17 +1699,40 @@ Please continue the conversation naturally using this context. Never ask the use
       }
 
       const wasStopped = !isStreamingRef.current;
-      setMessages(prev => prev.map(m => {
+      const finalText = wasStopped ? currentText : responseText;
+      
+      const finalAiMsg = {
+        id: newAiMsgId,
+        sender: 'ai',
+        text: finalText,
+        timestamp: new Date(),
+        isStreaming: false,
+        isStopped: wasStopped,
+        fullPromptText: responseText
+      };
+      
+      const successStatusMsg = {
+        id: statusCardId,
+        sender: 'system_regenerating',
+        originalPrompt: promptText.length > 120 ? promptText.slice(0, 120) + '...' : promptText,
+        status: 'success',
+        timestamp: new Date()
+      };
+
+      const finalMsgs = messagesRef.current.map(m => {
         if (m.id === newAiMsgId) {
-          return { 
-            ...m, 
-            isStreaming: false, 
-            isStopped: wasStopped,
-            text: wasStopped ? currentText : responseText
-          };
+          return finalAiMsg;
         }
         return m;
-      }));
+      });
+      const hasStatusCard = finalMsgs.some(m => m.id === statusCardId);
+      const withStatus = hasStatusCard ? finalMsgs : [...finalMsgs, successStatusMsg];
+      
+      const exists = withStatus.some(m => m.id === newAiMsgId);
+      const safeFinalMsgs = exists ? withStatus : [...withStatus, finalAiMsg];
+
+      setMessages(safeFinalMsgs);
+      saveChatHistory(safeFinalMsgs);
 
       setGenerationState(wasStopped ? 'stopped' : 'completed');
       toast.success("Response regenerated successfully!");
@@ -1744,10 +1928,50 @@ Please continue the conversation naturally using this context. Never ask the use
       try {
         let systemInstruction = LEGAL_SYSTEM_INSTRUCTION;
         systemInstruction += `\n\nCase Context:\n- Title: ${currentCase.title || currentCase.name}\n- Summary: ${currentCase.summary || currentCase.description}\n`;
-        if (toolkitLanguage === 'Hindi') {
-          systemInstruction += `\n\nCRITICAL: Respond in Hindi (Devanagari script) only. Use professional Indian legal terminology where appropriate.`;
-        }
-        const response = await generateChatResponse([], promptText, systemInstruction, [], toolkitLanguage || 'English', null, 'LEGAL_TOOLKIT', null, null);
+        const detectedLanguage = detectPreferredLanguage(promptText, [], toolkitLanguage);
+        const isSwitch = isLanguageSwitchQuery(promptText) ? 'Yes' : 'No';
+        systemInstruction += `
+\n\n### DYNAMIC LANGUAGE SWITCH & CONTEXT CONTINUITY:
+- Current UI Language: ${toolkitLanguage === 'Hindi' ? 'Hindi' : 'English'}
+- Conversation Preferred Language: ${detectedLanguage}
+- Is User Query a Language/Translation Switch: ${isSwitch}
+
+STRICT RULE FOR LANGUAGE SWITCH (IF YES):
+- DO NOT answer the language switch request message directly (e.g. do not say "Sure, I can translate", do not show greetings/intro, do not show current date/time, and do not show legal disclaimers).
+- Instead, take the IMMEDIATELY PREVIOUS assistant response or the active legal topic, and REGENERATE it entirely in the Conversation Preferred Language.
+- Maintain the exact same formatting, same headings, same citations, same analysis structure, and same reasoning. Only the language is changed.
+
+GREETINGS & DISCLAIMER ONCE RULE (STRICT):
+- Display greetings (e.g., "Hello Admin"), current date/time, legal disclaimer, and assistant introduction ONLY ONCE at the absolute beginning of the conversation.
+- NEVER repeat or print them on follow-up messages, language-switch requests, or context continuation requests. Keep follow-up responses direct, focused, and starting immediately with the content.
+
+LEGAL TERMINOLOGY IN HINDI:
+- When responding in Hindi, use professional Indian legal terms:
+  - Evidence -> साक्ष्य
+  - Court -> न्यायालय
+  - Judgment -> निर्णय
+  - Petitioner -> याचिकाकर्ता
+  - Respondent -> प्रतिवादी
+  - Appeal -> अपील
+  - Legal Notice -> कानूनी नोटिस
+  - Contract -> अनुबंध
+  - Clause -> धारा
+  - Agreement -> समझौता
+  - Relief -> राहत
+  - Jurisdiction -> अधिकार क्षेत्र
+  - Proceedings -> कार्यवाही
+  - Affidavit -> शपथपत्र
+  - Witness -> गवाह
+  - Cross Examination -> जिरह
+  - Supreme Court -> उच्चतम न्यायालय
+  - High Court -> उच्च न्यायालय
+  - District Court -> जिला न्यायालय
+
+THINK IN TARGET LANGUAGE:
+- Generate directly in the target language (Hindi or English). Do not translate post-hoc.
+- Do not mix Hindi and English in the same sentence.
+`;
+        const response = await generateChatResponse([], promptText, systemInstruction, [], detectedLanguage, null, 'LEGAL_TOOLKIT', newId, currentCase?._id || null);
         
         let responseText = typeof response === 'string' ? response : (response?.reply || response?.text || 'Analysis complete.');
         const aiMsg = { id: (Date.now() + 1).toString(), text: responseText, sender: 'ai', timestamp: new Date() };
@@ -1836,7 +2060,6 @@ Please continue the conversation naturally using this context. Never ask the use
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-3 select-none">
-          <LanguageToggle lang={toolkitLanguage === 'Hindi' ? 'hi' : 'en'} onChange={(l) => setToolkitLanguage(l === 'hi' ? 'Hindi' : 'English')} />
           {/* Export Chat dropdown */}
           <div className="relative">
             <button
